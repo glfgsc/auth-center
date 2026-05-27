@@ -9,6 +9,7 @@ import com.auth.center.security.JwtService;
 import com.auth.center.security.LoginRateLimiter;
 import com.auth.center.security.ITokenBlacklistService;
 import com.auth.center.service.IAuthService;
+import com.auth.center.service.IGroupService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ public class AuthServiceImpl implements IAuthService {
     private final LoginRateLimiter loginRateLimiter;
     private final ITokenBlacklistService tokenBlacklistService;
     private final PasswordEncoder passwordEncoder;
+    private final IGroupService groupService;
 
     /**
      * 构造函数，注入所有依赖.
@@ -61,19 +63,22 @@ public class AuthServiceImpl implements IAuthService {
      * @param loginRateLimiter      登录频率限制器
      * @param tokenBlacklistService Token 黑名单服务
      * @param passwordEncoder       密码编码器
+     * @param groupService          用户组服务
      */
     public AuthServiceImpl(AuthUserMapper authUserMapper,
                            PermissionSetMapper permissionSetMapper,
                            JwtService jwtService,
                            LoginRateLimiter loginRateLimiter,
                            ITokenBlacklistService tokenBlacklistService,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           IGroupService groupService) {
         this.authUserMapper = authUserMapper;
         this.permissionSetMapper = permissionSetMapper;
         this.jwtService = jwtService;
         this.loginRateLimiter = loginRateLimiter;
         this.tokenBlacklistService = tokenBlacklistService;
         this.passwordEncoder = passwordEncoder;
+        this.groupService = groupService;
     }
 
     /**
@@ -144,6 +149,9 @@ public class AuthServiceImpl implements IAuthService {
         user.setPassword(passwordEncoder.encode(password));
         user.setNickname(nickname);
         authUserMapper.insert(user);
+
+        // 自动加入 all_users 系统组
+        groupService.ensureAllUsersGroup(user.getId());
 
         // 解析默认权限集（viewer）
         PermissionSet ps = resolvePermissionSet(user.getId());

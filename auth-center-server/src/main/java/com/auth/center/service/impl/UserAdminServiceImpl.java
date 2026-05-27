@@ -5,6 +5,7 @@ import com.auth.center.entity.PermissionSet;
 import com.auth.center.entity.UserPermissionSet;
 import com.auth.center.mapper.AuthUserMapper;
 import com.auth.center.mapper.UserPermissionSetMapper;
+import com.auth.center.service.IGroupService;
 import com.auth.center.service.IPermissionSetService;
 import com.auth.center.service.IUserAdminService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -36,6 +37,7 @@ public class UserAdminServiceImpl implements IUserAdminService {
     private final UserPermissionSetMapper userPermissionSetMapper;
     private final PasswordEncoder passwordEncoder;
     private final IPermissionSetService permissionSetService;
+    private final IGroupService groupService;
 
     /**
      * 构造函数，注入所有依赖.
@@ -44,15 +46,18 @@ public class UserAdminServiceImpl implements IUserAdminService {
      * @param userPermissionSetMapper  用户-权限集关联 Mapper
      * @param passwordEncoder         密码编码器
      * @param permissionSetService    权限集服务
+     * @param groupService            用户组服务
      */
     public UserAdminServiceImpl(AuthUserMapper authUserMapper,
                                 UserPermissionSetMapper userPermissionSetMapper,
                                 PasswordEncoder passwordEncoder,
-                                IPermissionSetService permissionSetService) {
+                                IPermissionSetService permissionSetService,
+                                IGroupService groupService) {
         this.authUserMapper = authUserMapper;
         this.userPermissionSetMapper = userPermissionSetMapper;
         this.passwordEncoder = passwordEncoder;
         this.permissionSetService = permissionSetService;
+        this.groupService = groupService;
     }
 
     /**
@@ -129,6 +134,8 @@ public class UserAdminServiceImpl implements IUserAdminService {
         // BCrypt 加密密码
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         authUserMapper.insert(user);
+        // 自动加入 all_users 系统组
+        groupService.ensureAllUsersGroup(user.getId());
         log.info("创建用户 {}, id={}", user.getUsername(), user.getId());
         return user.getId();
     }
@@ -163,6 +170,9 @@ public class UserAdminServiceImpl implements IUserAdminService {
         LambdaQueryWrapper<UserPermissionSet> upsQuery = new LambdaQueryWrapper<>();
         upsQuery.eq(UserPermissionSet::getUserId, id);
         userPermissionSetMapper.delete(upsQuery);
+
+        // 级联清理: 删除用户的所有组成员关联
+        groupService.removeAllMembershipsForUser(id);
 
         authUserMapper.deleteById(id);
         log.info("删除用户 id={}, username={}", id, existing.getUsername());

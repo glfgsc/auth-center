@@ -76,3 +76,41 @@ CREATE TABLE IF NOT EXISTS auth_sso_config (
 -- 预置默认 SSO 配置（关闭状态）
 INSERT IGNORE INTO auth_sso_config (type, mode, enabled)
 VALUES ('CAS', 'disabled', 0);
+
+-- 用户组表
+CREATE TABLE IF NOT EXISTS auth_group (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    code        VARCHAR(50)  NOT NULL COMMENT '唯一编码',
+    name        VARCHAR(100) NOT NULL COMMENT '显示名称',
+    description VARCHAR(512) DEFAULT NULL COMMENT '描述',
+    is_system   TINYINT      NOT NULL DEFAULT 0 COMMENT '系统预置不可删：1=是，0=否',
+    created_by  BIGINT       DEFAULT NULL COMMENT '创建人 ID',
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_group_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='用户组';
+
+-- 用户组成员关联表
+CREATE TABLE IF NOT EXISTS auth_group_member (
+    id         BIGINT   NOT NULL AUTO_INCREMENT,
+    group_id   BIGINT   NOT NULL COMMENT 'FK -> auth_group.id',
+    user_id    BIGINT   NOT NULL COMMENT 'FK -> auth_user.id',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_group_member (group_id, user_id),
+    KEY idx_gm_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='用户组成员';
+
+-- 预置 all_users 系统组
+INSERT IGNORE INTO auth_group (code, name, description, is_system) VALUES
+('all_users', '全部用户', '包含所有注册用户的系统组', 1);
+
+-- 将现有用户全部加入 all_users 组
+INSERT IGNORE INTO auth_group_member (group_id, user_id)
+SELECT g.id, u.id
+FROM auth_group g, auth_user u
+WHERE g.code = 'all_users'
+  AND u.deleted = 0;

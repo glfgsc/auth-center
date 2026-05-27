@@ -96,6 +96,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/sso/public-config").permitAll()
                 // 公开端点: SPA 便捷验票
                 .requestMatchers("/api/auth/cas/ticket-validate").permitAll()
+                // 公开端点: 用户组内部查询（服务间调用，Docker 网络隔离）
+                .requestMatchers("/api/auth/groups/internal/**").permitAll()
                 // SSO 管理端点: 需要认证
                 .requestMatchers("/api/auth/sso/admin/**").authenticated()
                 // 管理端点: 需要认证
