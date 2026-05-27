@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS auth_sso_config (
     mode         VARCHAR(20)  NOT NULL DEFAULT 'disabled',
     server_url   VARCHAR(500),
     display_name VARCHAR(200),
+    icon         VARCHAR(32)  DEFAULT '',
+    config_json  TEXT,
     enabled      TINYINT(1)   NOT NULL DEFAULT 0,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

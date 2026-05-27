@@ -1,9 +1,11 @@
 package com.auth.center.service.impl;
 
 import com.auth.center.entity.AuthUser;
+import com.auth.center.entity.PermissionSet;
 import com.auth.center.entity.UserPermissionSet;
 import com.auth.center.mapper.AuthUserMapper;
 import com.auth.center.mapper.UserPermissionSetMapper;
+import com.auth.center.service.IPermissionSetService;
 import com.auth.center.service.IUserAdminService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.slf4j.Logger;
@@ -12,7 +14,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 用户管理服务实现 -- 提供用户 CRUD 和权限集分配的具体业务逻辑.
@@ -28,6 +35,7 @@ public class UserAdminServiceImpl implements IUserAdminService {
     private final AuthUserMapper authUserMapper;
     private final UserPermissionSetMapper userPermissionSetMapper;
     private final PasswordEncoder passwordEncoder;
+    private final IPermissionSetService permissionSetService;
 
     /**
      * 构造函数，注入所有依赖.
@@ -35,13 +43,16 @@ public class UserAdminServiceImpl implements IUserAdminService {
      * @param authUserMapper          用户 Mapper
      * @param userPermissionSetMapper  用户-权限集关联 Mapper
      * @param passwordEncoder         密码编码器
+     * @param permissionSetService    权限集服务
      */
     public UserAdminServiceImpl(AuthUserMapper authUserMapper,
                                 UserPermissionSetMapper userPermissionSetMapper,
-                                PasswordEncoder passwordEncoder) {
+                                PasswordEncoder passwordEncoder,
+                                IPermissionSetService permissionSetService) {
         this.authUserMapper = authUserMapper;
         this.userPermissionSetMapper = userPermissionSetMapper;
         this.passwordEncoder = passwordEncoder;
+        this.permissionSetService = permissionSetService;
     }
 
     /**
@@ -50,6 +61,56 @@ public class UserAdminServiceImpl implements IUserAdminService {
     @Override
     public List<AuthUser> list() {
         return authUserMapper.selectList(null);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>批量查询用户、关联记录、权限集，在内存中 JOIN 以避免 N+1 查询。</p>
+     */
+    @Override
+    public List<Map<String, Object>> listWithPermissionInfo() {
+        List<AuthUser> users = authUserMapper.selectList(null);
+        List<PermissionSet> allPs = permissionSetService.list();
+        List<UserPermissionSet> allUps = userPermissionSetMapper.selectList(null);
+
+        Map<Long, PermissionSet> psById = allPs.stream()
+                .collect(Collectors.toMap(PermissionSet::getId, Function.identity()));
+        Map<Long, Long> userToPsId = allUps.stream()
+                .collect(Collectors.toMap(
+                        UserPermissionSet::getUserId,
+                        UserPermissionSet::getPermissionSetId,
+                        (a, b) -> a));
+
+        List<Map<String, Object>> result = new ArrayList<>(users.size());
+        for (AuthUser user : users) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", user.getId());
+            row.put("username", user.getUsername());
+            row.put("nickname", user.getNickname());
+            row.put("avatar", user.getAvatar());
+            row.put("email", user.getEmail());
+            row.put("phone", user.getPhone());
+            row.put("createTime", user.getCreateTime());
+            row.put("updateTime", user.getUpdateTime());
+
+            Long psId = userToPsId.get(user.getId());
+            if (psId != null) {
+                PermissionSet ps = psById.get(psId);
+                if (ps != null) {
+                    row.put("permissionSet", ps.getCode());
+                    row.put("permissionSetName", ps.getName());
+                } else {
+                    row.put("permissionSet", null);
+                    row.put("permissionSetName", null);
+                }
+            } else {
+                row.put("permissionSet", null);
+                row.put("permissionSetName", null);
+            }
+            result.add(row);
+        }
+        return result;
     }
 
     /**
@@ -125,6 +186,19 @@ public class UserAdminServiceImpl implements IUserAdminService {
         userPermissionSetMapper.insert(ups);
 
         log.info("为用户 {} 分配权限集 {}", userId, permissionSetId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void assignPermissionSetByCode(Long userId, String permissionSetCode) {
+        PermissionSet ps = permissionSetService.getByCode(permissionSetCode);
+        if (ps == null) {
+            throw new IllegalArgumentException("权限集编码不存在: " + permissionSetCode);
+        }
+        assignPermissionSet(userId, ps.getId());
     }
 
     /**

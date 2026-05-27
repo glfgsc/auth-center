@@ -1,5 +1,6 @@
 package com.auth.center.config;
 
+import com.auth.center.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +12,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.Map;
 
@@ -35,14 +37,18 @@ public class SecurityConfig {
     private static final int SC_FORBIDDEN = HttpServletResponse.SC_FORBIDDEN;
 
     private final ObjectMapper objectMapper;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /**
-     * 构造函数，注入 JSON 序列化器.
+     * 构造函数，注入依赖.
      *
-     * @param objectMapper Jackson ObjectMapper
+     * @param objectMapper             Jackson ObjectMapper
+     * @param jwtAuthenticationFilter   JWT 认证过滤器
      */
-    public SecurityConfig(ObjectMapper objectMapper) {
+    public SecurityConfig(ObjectMapper objectMapper,
+                          JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.objectMapper = objectMapper;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     /**
@@ -90,11 +96,16 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/sso/public-config").permitAll()
                 // 公开端点: SPA 便捷验票
                 .requestMatchers("/api/auth/cas/ticket-validate").permitAll()
+                // SSO 管理端点: 需要认证
+                .requestMatchers("/api/auth/sso/admin/**").authenticated()
                 // 管理端点: 需要认证
                 .requestMatchers("/api/auth/admin/**").authenticated()
                 // 其余请求: 需要认证
                 .anyRequest().authenticated()
             )
+
+            // JWT 认证过滤器 — 解析 Authorization 头，设置 SecurityContext
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
             // 自定义 401 响应
             .exceptionHandling(exceptions -> exceptions

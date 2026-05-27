@@ -7,7 +7,7 @@ import com.auth.center.mapper.AuthUserMapper;
 import com.auth.center.mapper.PermissionSetMapper;
 import com.auth.center.security.JwtService;
 import com.auth.center.security.LoginRateLimiter;
-import com.auth.center.security.TokenBlacklistService;
+import com.auth.center.security.ITokenBlacklistService;
 import com.auth.center.service.IAuthService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.jsonwebtoken.Claims;
@@ -49,7 +49,7 @@ public class AuthServiceImpl implements IAuthService {
     private final PermissionSetMapper permissionSetMapper;
     private final JwtService jwtService;
     private final LoginRateLimiter loginRateLimiter;
-    private final TokenBlacklistService tokenBlacklistService;
+    private final ITokenBlacklistService tokenBlacklistService;
     private final PasswordEncoder passwordEncoder;
 
     /**
@@ -66,7 +66,7 @@ public class AuthServiceImpl implements IAuthService {
                            PermissionSetMapper permissionSetMapper,
                            JwtService jwtService,
                            LoginRateLimiter loginRateLimiter,
-                           TokenBlacklistService tokenBlacklistService,
+                           ITokenBlacklistService tokenBlacklistService,
                            PasswordEncoder passwordEncoder) {
         this.authUserMapper = authUserMapper;
         this.permissionSetMapper = permissionSetMapper;

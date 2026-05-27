@@ -37,4 +37,9 @@ public interface ISsoConfigService {
      * @return 保存后的 SSO 配置实体
      */
     SsoConfig updateConfig(SsoConfig config);
+
+    /**
+     * 删除 SSO 配置 — 回到纯本地登录模式.
+     */
+    void deleteConfig();
 }

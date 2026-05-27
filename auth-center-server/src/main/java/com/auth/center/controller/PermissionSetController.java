@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -74,6 +75,30 @@ public class PermissionSetController {
         }
         Long id = permissionSetService.save(ps);
         return Result.ok(id);
+    }
+
+    /**
+     * 更新已有权限集.
+     *
+     * <p>通过路径参数指定权限集 ID，请求体中传入 name / description / capabilities / sortOrder 等待更新字段。
+     * 编码（code）和系统预设标记（isSystem）不可变更，更新时保留原值。</p>
+     *
+     * @param id 权限集主键 ID（路径参数）
+     * @param ps 请求体中的权限集字段
+     * @return 操作结果
+     */
+    @PutMapping("/{id}")
+    public Result<Void> update(@PathVariable Long id, @RequestBody PermissionSet ps) {
+        PermissionSet existing = permissionSetService.getById(id);
+        if (existing == null) {
+            return Result.fail("权限集不存在");
+        }
+        ps.setId(id);
+        // code 和 isSystem 不可变更，保留原值
+        ps.setCode(existing.getCode());
+        ps.setIsSystem(existing.getIsSystem());
+        permissionSetService.save(ps);
+        return Result.ok();
     }
 
     /**

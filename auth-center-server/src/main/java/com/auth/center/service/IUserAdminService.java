@@ -3,6 +3,7 @@ package com.auth.center.service;
 import com.auth.center.entity.AuthUser;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户管理服务接口 -- 提供用户 CRUD 及权限集分配操作.
@@ -17,6 +18,16 @@ public interface IUserAdminService {
      * @return 用户列表
      */
     List<AuthUser> list();
+
+    /**
+     * 查询所有用户列表，关联权限集信息.
+     *
+     * <p>返回 Map 列表，每个 Map 包含用户基础字段及额外字段:
+     * {@code permissionSet}（权限集编码）、{@code permissionSetName}（权限集名称）。</p>
+     *
+     * @return 带权限集信息的用户列表
+     */
+    List<Map<String, Object>> listWithPermissionInfo();
 
     /**
      * 根据 ID 查询单个用户.
@@ -62,6 +73,17 @@ public interface IUserAdminService {
      * @param permissionSetId 权限集 ID
      */
     void assignPermissionSet(Long userId, Long permissionSetId);
+
+    /**
+     * 根据权限集编码为用户分配权限集.
+     *
+     * <p>通过编码解析权限集 ID，再执行分配。前端通过 code 而非 ID 指定权限集。</p>
+     *
+     * @param userId             用户 ID
+     * @param permissionSetCode  权限集编码，如 "admin"、"viewer"
+     * @throws IllegalArgumentException 权限集编码不存在时抛出
+     */
+    void assignPermissionSetByCode(Long userId, String permissionSetCode);
 
     /**
      * 移除用户的权限集关联.

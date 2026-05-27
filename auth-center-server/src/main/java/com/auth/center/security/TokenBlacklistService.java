@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 @ConditionalOnMissingBean(RedisTokenBlacklistService.class)
-public class TokenBlacklistService {
+public class TokenBlacklistService implements ITokenBlacklistService {
 
     private static final Logger log = LoggerFactory.getLogger(TokenBlacklistService.class);
 

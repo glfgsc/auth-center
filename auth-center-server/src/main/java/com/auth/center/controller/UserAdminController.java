@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户管理控制器 -- 提供用户 CRUD 和权限集分配的 RESTful 端点.
@@ -35,14 +36,17 @@ public class UserAdminController {
     }
 
     /**
-     * 查询所有用户列表.
+     * 查询所有用户列表（含权限集信息）.
      *
-     * @return 用户列表
+     * <p>每条记录包含用户基础字段和额外字段:
+     * {@code permissionSet}（权限集编码）、{@code permissionSetName}（权限集名称）。</p>
+     *
+     * @return 带权限集信息的用户列表
      */
     // TODO: @PreAuthorize("@authPerm.isAdmin()")
     @GetMapping
-    public Result<List<AuthUser>> list() {
-        return Result.ok(userAdminService.list());
+    public Result<List<Map<String, Object>>> list() {
+        return Result.ok(userAdminService.listWithPermissionInfo());
     }
 
     /**
@@ -109,19 +113,30 @@ public class UserAdminController {
     }
 
     /**
-     * 为用户分配权限集.
+     * 为用户分配权限集（通过编码）.
      *
-     * @param userId 用户 ID
-     * @param psId   权限集 ID
+     * <p>前端传递 {@code { "permissionSetCode": "admin" }} 格式的 JSON 请求体，
+     * 后端通过编码解析权限集 ID 后执行分配。</p>
+     *
+     * @param userId 用户 ID（路径参数）
+     * @param body   包含 {@code permissionSetCode} 的请求体
      * @return 操作结果
      */
     // TODO: @PreAuthorize("@authPerm.isAdmin()")
-    @PostMapping("/{userId}/permission-set/{psId}")
+    @PutMapping("/{userId}/permission-set")
     public Result<Void> assignPermissionSet(
             @PathVariable Long userId,
-            @PathVariable Long psId) {
-        userAdminService.assignPermissionSet(userId, psId);
-        return Result.ok();
+            @RequestBody Map<String, String> body) {
+        String code = body.get("permissionSetCode");
+        if (code == null || code.isBlank()) {
+            return Result.fail("permissionSetCode 不能为空");
+        }
+        try {
+            userAdminService.assignPermissionSetByCode(userId, code);
+            return Result.ok();
+        } catch (IllegalArgumentException e) {
+            return Result.fail(e.getMessage());
+        }
     }
 
     /**

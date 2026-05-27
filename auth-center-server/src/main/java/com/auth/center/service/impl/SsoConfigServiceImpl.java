@@ -62,6 +62,9 @@ public class SsoConfigServiceImpl implements ISsoConfigService {
 
     /**
      * {@inheritDoc}
+     *
+     * <p>返回前端 CasPublicConfig 所需的字段:
+     * enabled, mode, name, icon, loginUrl。</p>
      */
     @Override
     public Map<String, Object> getPublicConfig() {
@@ -72,12 +75,25 @@ public class SsoConfigServiceImpl implements ISsoConfigService {
             result.put(FIELD_DISPLAY_NAME, "");
             result.put(FIELD_SERVER_URL, "");
             result.put(FIELD_ENABLED, false);
+            result.put("name", "");
+            result.put("icon", "");
+            result.put("loginUrl", null);
             return result;
         }
         result.put(FIELD_MODE, config.getMode());
         result.put(FIELD_DISPLAY_NAME, config.getDisplayName());
         result.put(FIELD_SERVER_URL, config.getServerUrl());
         result.put(FIELD_ENABLED, config.getEnabled());
+        // 前端 CasPublicConfig 需要的额外字段
+        result.put("name", config.getDisplayName() != null ? config.getDisplayName() : "CAS");
+        result.put("icon", config.getIcon() != null ? config.getIcon() : "");
+        // loginUrl: 拼接 CAS 登录端点供前端 mixed 模式按钮使用
+        String serverUrl = config.getServerUrl();
+        if (serverUrl != null && !serverUrl.isBlank()) {
+            result.put("loginUrl", serverUrl.replaceAll("/+$", "") + "/login");
+        } else {
+            result.put("loginUrl", null);
+        }
         return result;
     }
 
@@ -96,5 +112,17 @@ public class SsoConfigServiceImpl implements ISsoConfigService {
             log.info("SSO 配置已更新: type={}, mode={}", config.getType(), config.getMode());
         }
         return config;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteConfig() {
+        SsoConfig existing = getConfig();
+        if (existing != null) {
+            ssoConfigMapper.deleteById(existing.getId());
+            log.info("SSO 配置已删除: id={}", existing.getId());
+        }
     }
 }

@@ -38,6 +38,12 @@ public class SsoConfig {
     /** SSO 按钮显示名称，如 "企业 SSO 登录" */
     private String displayName;
 
+    /** SSO 按钮图标（emoji 或图标标识） */
+    private String icon;
+
+    /** 扩展配置 JSON（属性映射、协议版本、自动注册等） */
+    private String configJson;
+
     /** 是否启用该 SSO 配置 */
     private Boolean enabled;
 
@@ -139,6 +145,42 @@ public class SsoConfig {
      */
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    /**
+     * 获取图标.
+     *
+     * @return 图标标识
+     */
+    public String getIcon() {
+        return icon;
+    }
+
+    /**
+     * 设置图标.
+     *
+     * @param icon 图标标识
+     */
+    public void setIcon(String icon) {
+        this.icon = icon;
+    }
+
+    /**
+     * 获取扩展配置 JSON.
+     *
+     * @return 配置 JSON 字符串
+     */
+    public String getConfigJson() {
+        return configJson;
+    }
+
+    /**
+     * 设置扩展配置 JSON.
+     *
+     * @param configJson 配置 JSON 字符串
+     */
+    public void setConfigJson(String configJson) {
+        this.configJson = configJson;
     }
 
     /**

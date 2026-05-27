@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 @Primary
 @ConditionalOnProperty(name = "spring.data.redis.host", matchIfMissing = false)
-public class RedisTokenBlacklistService {
+public class RedisTokenBlacklistService implements ITokenBlacklistService {
 
     private static final Logger log = LoggerFactory.getLogger(RedisTokenBlacklistService.class);
 

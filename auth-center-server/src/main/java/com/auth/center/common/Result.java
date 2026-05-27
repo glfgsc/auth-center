@@ -9,13 +9,13 @@ package com.auth.center.common;
  */
 public class Result<T> {
 
-    /** 成功状态码 */
-    private static final int SUCCESS_CODE = 0;
+    /** 成功状态码 — 与 BI / Flow Engine 统一使用 200 */
+    private static final int SUCCESS_CODE = 200;
 
     /** 默认失败状态码 */
-    private static final int FAIL_CODE = -1;
+    private static final int FAIL_CODE = 500;
 
-    /** 状态码，0 表示成功，非 0 表示失败 */
+    /** 状态码，200 表示成功，非 200 表示失败 */
     private int code;
 
     /** 提示消息 */
