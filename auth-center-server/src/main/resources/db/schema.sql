@@ -58,3 +58,19 @@ CREATE TABLE IF NOT EXISTS auth_system_capability (
     UNIQUE KEY uk_system_cap (system_code, capability_code),
     INDEX idx_system (system_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- SSO 配置表
+CREATE TABLE IF NOT EXISTS auth_sso_config (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    type         VARCHAR(50)  NOT NULL DEFAULT 'CAS',
+    mode         VARCHAR(20)  NOT NULL DEFAULT 'disabled',
+    server_url   VARCHAR(500),
+    display_name VARCHAR(200),
+    enabled      TINYINT(1)   NOT NULL DEFAULT 0,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 预置默认 SSO 配置（关闭状态）
+INSERT IGNORE INTO auth_sso_config (type, mode, enabled)
+VALUES ('CAS', 'disabled', 0);

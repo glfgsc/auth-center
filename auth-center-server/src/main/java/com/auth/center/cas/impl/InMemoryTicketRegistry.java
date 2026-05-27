@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 
 import java.util.Iterator;
@@ -18,8 +19,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>使用 {@link ConcurrentHashMap} 存储 TGT 和 ST, 保证线程安全.
  * 后台定时任务每 5 分钟清理过期票据, 防止内存泄漏.
+ *
+ * <p>当 Redis 实现可用时（{@code RedisTicketRegistry}），此 Bean 不会被创建。</p>
  */
 @Component
+@ConditionalOnMissingBean(RedisTicketRegistry.class)
 public class InMemoryTicketRegistry implements TicketRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(InMemoryTicketRegistry.class);

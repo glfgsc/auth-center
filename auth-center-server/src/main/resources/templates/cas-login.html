@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Auth Center - Login</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #334155;
+        }
+
+        .login-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 400px;
+            margin: 16px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .login-header p {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 15px;
+            color: #1e293b;
+            background: #f8fafc;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+            background: #ffffff;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #ffffff;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .error-msg {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .error-msg.visible { display: block; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .divider span { padding: 0 12px; }
+
+        .btn-sso {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #475569;
+            background: #ffffff;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn-sso:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 28px 20px;
+                margin: 12px;
+            }
+            .login-header h1 { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <h1>Auth Center</h1>
+            <p>Sign in to your account</p>
+        </div>
+
+        <div id="errorMsg" class="error-msg"></div>
+
+        <!-- Local login form (hidden when mode = enforced and ?local=1 not present) -->
+        <form id="loginForm" th:classappend="${ssoMode == 'enforced'} ? 'hidden' : ''">
+            <input type="hidden" id="serviceParam" th:value="${service}"/>
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" autocomplete="username" required/>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" required/>
+            </div>
+
+            <button type="submit" class="btn-primary" id="submitBtn">Sign In</button>
+        </form>
+
+        <!-- SSO section: shown when mode = mixed -->
+        <div id="ssoSection" th:if="${ssoMode == 'mixed'}" >
+            <div class="divider"><span>or</span></div>
+            <button type="button" class="btn-sso" id="ssoBtn"
+                    th:text="${ssoDisplayName != null && !ssoDisplayName.isEmpty()} ? ${ssoDisplayName} : 'SSO Login'">
+                SSO Login
+            </button>
+        </div>
+
+        <!-- Enforced mode: show SSO-only UI -->
+        <div id="enforcedSection" th:if="${ssoMode == 'enforced'}">
+            <button type="button" class="btn-primary" id="enforcedSsoBtn"
+                    th:text="${ssoDisplayName != null && !ssoDisplayName.isEmpty()} ? ${ssoDisplayName} : 'SSO Login'">
+                SSO Login
+            </button>
+            <p style="text-align:center; margin-top:12px; font-size:13px; color:#94a3b8;">
+                <a href="?local=1" style="color:#3b82f6; text-decoration:none;">Local Login</a>
+            </p>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function() {
+            var ssoMode    = /*[[${ssoMode}]]*/ 'disabled';
+            var ssoUrl     = /*[[${ssoServerUrl}]]*/ '';
+            var serviceVal = /*[[${service}]]*/ '';
+
+            // Enforced mode: auto-redirect unless ?local=1
+            if (ssoMode === 'enforced' && ssoUrl) {
+                var params = new URLSearchParams(window.location.search);
+                if (!params.has('local')) {
+                    redirectToSso();
+                    return;
+                }
+                // Show local form when ?local=1
+                var form = document.getElementById('loginForm');
+                if (form) form.classList.remove('hidden');
+            }
+
+            // SSO button click handler
+            var ssoBtn = document.getElementById('ssoBtn');
+            if (ssoBtn) ssoBtn.addEventListener('click', redirectToSso);
+
+            var enforcedBtn = document.getElementById('enforcedSsoBtn');
+            if (enforcedBtn) enforcedBtn.addEventListener('click', redirectToSso);
+
+            function redirectToSso() {
+                if (!ssoUrl) return;
+                var callbackBase = window.location.origin + '/cas/external-callback';
+                var originalService = serviceVal || window.location.origin;
+                var callbackUrl = callbackBase + '?originalService=' + encodeURIComponent(originalService);
+                window.location.href = ssoUrl + '/login?service=' + encodeURIComponent(callbackUrl);
+            }
+
+            // Login form AJAX submit
+            var loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var errorEl  = document.getElementById('errorMsg');
+                    var btnEl    = document.getElementById('submitBtn');
+                    var username = document.getElementById('username').value.trim();
+                    var password = document.getElementById('password').value;
+
+                    if (!username || !password) {
+                        showError(errorEl, 'Please enter username and password');
+                        return;
+                    }
+
+                    btnEl.disabled = true;
+                    btnEl.textContent = 'Signing in...';
+                    errorEl.classList.remove('visible');
+
+                    var body = { username: username, password: password };
+                    var svc = document.getElementById('serviceParam').value;
+                    if (svc) body.service = svc;
+
+                    fetch('/cas/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    })
+                    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+                    .then(function(result) {
+                        if (!result.ok) {
+                            showError(errorEl, result.data.error || 'Login failed');
+                            resetBtn(btnEl);
+                            return;
+                        }
+                        var d = result.data;
+                        if (d.redirectUrl) {
+                            window.location.href = d.redirectUrl;
+                        } else if (svc && d.ticket) {
+                            var sep = svc.indexOf('?') >= 0 ? '&' : '?';
+                            window.location.href = svc + sep + 'ticket=' + d.ticket;
+                        } else {
+                            // No service — store token and show success
+                            if (d.token) {
+                                try { localStorage.setItem('auth_token', d.token); } catch(ignored) {}
+                            }
+                            showError(errorEl, '');
+                            btnEl.textContent = 'Success';
+                        }
+                    })
+                    .catch(function() {
+                        showError(errorEl, 'Network error, please retry');
+                        resetBtn(btnEl);
+                    });
+                });
+            }
+
+            function showError(el, msg) {
+                if (msg) {
+                    el.textContent = msg;
+                    el.classList.add('visible');
+                } else {
+                    el.classList.remove('visible');
+                }
+            }
+
+            function resetBtn(btn) {
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+            }
+        })();
+        /*]]>*/
+    </script>
+</body>
+</html>

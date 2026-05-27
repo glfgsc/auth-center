@@ -20,7 +20,7 @@ import java.util.List;
  * 所有端点面向管理后台使用。</p>
  */
 @RestController
-@RequestMapping("/api/admin/permission-sets")
+@RequestMapping("/api/auth/admin/permission-sets")
 public class PermissionSetController {
 
     private final IPermissionSetService permissionSetService;

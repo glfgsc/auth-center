@@ -20,7 +20,7 @@ import java.util.List;
  * <p>所有端点需要管理员权限。</p>
  */
 @RestController
-@RequestMapping("/api/admin/users")
+@RequestMapping("/api/auth/admin/users")
 public class UserAdminController {
 
     private final IUserAdminService userAdminService;

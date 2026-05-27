@@ -35,6 +35,12 @@ public class TicketGrantingTicket {
     private long expiresAt;
 
     /**
+     * 无参构造 -- JSON 反序列化框架需要.
+     */
+    public TicketGrantingTicket() {
+    }
+
+    /**
      * 创建新的 TGT.
      *
      * @param userId        用户 ID

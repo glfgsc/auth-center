@@ -85,9 +85,13 @@ public class SecurityConfig {
                 // 公开端点: 错误页
                 .requestMatchers("/error").permitAll()
                 // 公开端点: 能力注册（子系统启动时调用）
-                .requestMatchers("/api/capabilities/**").permitAll()
+                .requestMatchers("/api/auth/capabilities/**").permitAll()
+                // 公开端点: SSO 公开配置（登录页渲染使用）
+                .requestMatchers("/api/auth/sso/public-config").permitAll()
+                // 公开端点: SPA 便捷验票
+                .requestMatchers("/api/auth/cas/ticket-validate").permitAll()
                 // 管理端点: 需要认证
-                .requestMatchers("/api/admin/**").authenticated()
+                .requestMatchers("/api/auth/admin/**").authenticated()
                 // 其余请求: 需要认证
                 .anyRequest().authenticated()
             )

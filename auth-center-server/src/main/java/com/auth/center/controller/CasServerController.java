@@ -9,8 +9,10 @@ import com.auth.center.mapper.AuthUserMapper;
 import com.auth.center.mapper.PermissionSetMapper;
 import com.auth.center.security.JwtService;
 import com.auth.center.security.LoginRateLimiter;
+import com.auth.center.service.ISsoConfigService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,34 +21,45 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * CAS 协议服务端控制器 -- 实现 CAS SSO 登录、验票和注销协议.
  *
  * <p>核心端点:
  * <ul>
- *     <li>{@code GET /cas/login} - 检查 TGT cookie，有效则签发 ST 并重定向，否则要求登录</li>
+ *     <li>{@code GET /cas/login} - 检查 TGT cookie; 浏览器访问返回 Thymeleaf 视图, API 返回 JSON</li>
  *     <li>{@code POST /cas/login} - 验证凭据、创建 TGT、签发 ST、生成 JWT</li>
  *     <li>{@code GET /cas/serviceValidate} - 服务端验票，返回 CAS XML</li>
  *     <li>{@code GET /cas/p3/serviceValidate} - CAS 3.0 协议验票（同上）</li>
  *     <li>{@code GET /cas/logout} - 销毁 TGT，清除 CASTGC cookie</li>
+ *     <li>{@code POST /api/auth/cas/ticket-validate} - SPA 便捷验票，返回 JSON</li>
+ *     <li>{@code GET /cas/external-callback} - 外部 CAS 回调, 自动注册 + 签发本地票据</li>
  * </ul>
  *
  * <p>注意: 本控制器使用 {@code @Controller} 而非 {@code @RestController}，
- * 部分方法需要 302 重定向能力，返回 JSON 的方法加 {@code @ResponseBody}。</p>
+ * 部分方法需要 302 重定向或 Thymeleaf 视图渲染能力，返回 JSON 的方法加 {@code @ResponseBody}。</p>
  */
 @Controller
-@RequestMapping("/cas")
 public class CasServerController {
 
     private static final Logger log = LoggerFactory.getLogger(CasServerController.class);
@@ -66,12 +79,26 @@ public class CasServerController {
     /** Cookie 过期（立即删除）标记 */
     private static final int COOKIE_EXPIRED = 0;
 
+    /** Accept 请求头名称 */
+    private static final String HEADER_ACCEPT = "Accept";
+
+    /** JSON 媒体类型前缀 */
+    private static final String JSON_MEDIA_PREFIX = "application/json";
+
+    /** 外部 CAS XML 中提取用户名的正则 */
+    private static final Pattern CAS_USER_PATTERN =
+            Pattern.compile("<cas:user>([^<]+)</cas:user>");
+
+    /** 外部 CAS 验票 HTTP 超时 (秒) */
+    private static final int EXTERNAL_CAS_TIMEOUT_SECONDS = 10;
+
     private final TicketRegistry ticketRegistry;
     private final JwtService jwtService;
     private final PermissionSetMapper permissionSetMapper;
     private final AuthUserMapper authUserMapper;
     private final PasswordEncoder passwordEncoder;
     private final LoginRateLimiter loginRateLimiter;
+    private final ISsoConfigService ssoConfigService;
 
     /**
      * 构造函数，注入所有依赖.
@@ -82,36 +109,43 @@ public class CasServerController {
      * @param authUserMapper      用户 Mapper
      * @param passwordEncoder     密码编码器
      * @param loginRateLimiter    登录频率限制器
+     * @param ssoConfigService    SSO 配置服务
      */
     public CasServerController(TicketRegistry ticketRegistry,
                                JwtService jwtService,
                                PermissionSetMapper permissionSetMapper,
                                AuthUserMapper authUserMapper,
                                PasswordEncoder passwordEncoder,
-                               LoginRateLimiter loginRateLimiter) {
+                               LoginRateLimiter loginRateLimiter,
+                               ISsoConfigService ssoConfigService) {
         this.ticketRegistry = ticketRegistry;
         this.jwtService = jwtService;
         this.permissionSetMapper = permissionSetMapper;
         this.authUserMapper = authUserMapper;
         this.passwordEncoder = passwordEncoder;
         this.loginRateLimiter = loginRateLimiter;
+        this.ssoConfigService = ssoConfigService;
     }
 
     /**
-     * CAS 登录页 -- 检查 TGT cookie 状态.
+     * CAS 登录页 -- 根据 Accept 头决定返回 Thymeleaf 视图或 JSON.
      *
-     * <p>如果存在有效 TGT 且提供了 service 参数，签发 ST 后 302 重定向到 service URL。
-     * 否则返回 JSON 要求前端渲染登录表单。</p>
+     * <p>当已有有效 TGT + service 参数时，签发 ST 后 302 重定向（不渲染页面）。
+     * 浏览器直接访问（不含 Accept: application/json）时返回 Thymeleaf 模板 {@code cas-login}。
+     * API 客户端（Accept: application/json）返回 JSON（向后兼容）。</p>
      *
      * @param service   目标服务回调 URL（可选）
      * @param tgcCookie CASTGC cookie 值（可选）
-     * @return 重定向响应或 JSON 登录提示
+     * @param request   HTTP 请求（用于判断 Accept 头）
+     * @param model     Thymeleaf Model（用于传递视图属性）
+     * @return 重定向响应、Thymeleaf 视图名或 JSON 响应
      */
-    @GetMapping("/login")
-    @ResponseBody
-    public ResponseEntity<?> loginPage(
+    @GetMapping("/cas/login")
+    public Object loginPage(
             @RequestParam(required = false) String service,
-            @CookieValue(name = TGC_COOKIE_NAME, required = false) String tgcCookie) {
+            @CookieValue(name = TGC_COOKIE_NAME, required = false) String tgcCookie,
+            HttpServletRequest request,
+            Model model) {
 
         // 检查是否存在有效 TGT
         if (tgcCookie != null && !tgcCookie.isBlank()) {
@@ -126,18 +160,37 @@ public class CasServerController {
                             .build();
                 }
                 // 有效 TGT 但无 service -> 返回已登录状态
-                Map<String, Object> data = new HashMap<>();
-                data.put("authenticated", true);
-                data.put("username", tgt.getUsername());
-                return ResponseEntity.ok(data);
+                if (isJsonRequest(request)) {
+                    return buildJsonResponse(Map.of("authenticated", true, "username", tgt.getUsername()));
+                }
+                model.addAttribute("authenticated", true);
+                model.addAttribute("username", tgt.getUsername());
             }
         }
 
-        // 无有效 TGT -> 返回需要登录的 JSON
-        Map<String, Object> data = new HashMap<>();
-        data.put("needLogin", true);
-        data.put("service", service);
-        return ResponseEntity.ok(data);
+        // 获取 SSO 配置用于渲染登录页
+        Map<String, Object> ssoPublic = ssoConfigService.getPublicConfig();
+        String ssoMode = (String) ssoPublic.getOrDefault("mode", "disabled");
+        String ssoDisplayName = (String) ssoPublic.getOrDefault("displayName", "");
+        String ssoServerUrl = (String) ssoPublic.getOrDefault("serverUrl", "");
+
+        // API 客户端 -> JSON
+        if (isJsonRequest(request)) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("needLogin", true);
+            data.put("service", service);
+            data.put("ssoMode", ssoMode);
+            data.put("ssoDisplayName", ssoDisplayName);
+            data.put("ssoServerUrl", ssoServerUrl);
+            return buildJsonResponse(data);
+        }
+
+        // 浏览器 -> Thymeleaf 视图
+        model.addAttribute("service", service);
+        model.addAttribute("ssoMode", ssoMode);
+        model.addAttribute("ssoDisplayName", ssoDisplayName);
+        model.addAttribute("ssoServerUrl", ssoServerUrl);
+        return "cas-login";
     }
 
     /**
@@ -150,7 +203,7 @@ public class CasServerController {
      * @param response HTTP 响应（用于设置 cookie）
      * @return 包含 token、ticket、用户信息和重定向 URL 的 JSON
      */
-    @PostMapping("/login")
+    @PostMapping("/cas/login")
     @ResponseBody
     public ResponseEntity<?> loginSubmit(
             @RequestBody Map<String, String> params,
@@ -246,7 +299,7 @@ public class CasServerController {
      * @param service 请求方的服务 URL（需与签发时一致）
      * @return CAS XML 格式的验票响应
      */
-    @GetMapping({"/serviceValidate", "/p3/serviceValidate"})
+    @GetMapping({"/cas/serviceValidate", "/cas/p3/serviceValidate"})
     @ResponseBody
     public ResponseEntity<String> serviceValidate(
             @RequestParam String ticket,
@@ -274,6 +327,147 @@ public class CasServerController {
     }
 
     /**
+     * SPA 便捷验票端点 -- 验证 ST 并返回 JSON（避免前端解析 CAS XML）.
+     *
+     * @param params 请求体，需包含 ticket 和 service
+     * @return JSON 响应，包含 token、userId、username、permissionSet、capabilities
+     */
+    @PostMapping("/api/auth/cas/ticket-validate")
+    @ResponseBody
+    public ResponseEntity<?> ticketValidate(@RequestBody Map<String, String> params) {
+        String ticket = params.get("ticket");
+        String service = params.get("service");
+
+        if (ticket == null || ticket.isBlank()) {
+            return ResponseEntity.badRequest().body(errorMap("ticket 不能为空"));
+        }
+        if (service == null || service.isBlank()) {
+            return ResponseEntity.badRequest().body(errorMap("service 不能为空"));
+        }
+
+        ServiceTicket st = ticketRegistry.validateSt(ticket, service);
+        if (st == null) {
+            log.warn("SPA 验票失败: ticket={}, service={}", ticket, service);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(errorMap("无效的票据"));
+        }
+
+        // 签发 JWT
+        String jwt = jwtService.generateAccessToken(
+                st.getUserId(), st.getUsername(),
+                st.getPermissionSet(), st.getCapabilities());
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", jwt);
+        data.put("userId", st.getUserId());
+        data.put("username", st.getUsername());
+        data.put("permissionSet", st.getPermissionSet());
+        data.put("capabilities", st.getCapabilities());
+
+        log.info("SPA 验票成功: username={}, service={}", st.getUsername(), service);
+        return ResponseEntity.ok(data);
+    }
+
+    /**
+     * 外部 CAS 回调端点 -- 接收外部 CAS 服务器验票结果并创建本地会话.
+     *
+     * <p>流程:
+     * <ol>
+     *     <li>用 HttpClient 调外部 CAS 服务器的 /serviceValidate 验证 ticket</li>
+     *     <li>从 CAS XML 中提取 username</li>
+     *     <li>本地查找或自动注册用户（默认权限集 = viewer）</li>
+     *     <li>创建 TGT + 设置 CASTGC cookie + 签发 ST</li>
+     *     <li>302 重定向到 originalService?ticket=ST-xxx</li>
+     * </ol>
+     *
+     * @param ticket          外部 CAS 服务器签发的 ticket
+     * @param originalService 最终要跳转回的业务系统 URL
+     * @param response        HTTP 响应（用于设置 cookie 和重定向）
+     * @throws IOException 重定向失败时抛出
+     */
+    @GetMapping("/cas/external-callback")
+    public void externalCallback(
+            @RequestParam String ticket,
+            @RequestParam String originalService,
+            HttpServletResponse response) throws IOException {
+
+        Map<String, Object> ssoPublic = ssoConfigService.getPublicConfig();
+        String ssoServerUrl = (String) ssoPublic.get("serverUrl");
+
+        if (ssoServerUrl == null || ssoServerUrl.isBlank()) {
+            log.warn("外部 CAS 回调失败: SSO 服务器地址未配置");
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "SSO 服务器地址未配置");
+            return;
+        }
+
+        // 构建外部 CAS 验票 URL
+        String callbackUrl = buildExternalCallbackUrl(ssoServerUrl, originalService);
+        String validateUrl = ssoServerUrl + "/serviceValidate"
+                + "?ticket=" + URLEncoder.encode(ticket, StandardCharsets.UTF_8)
+                + "&service=" + URLEncoder.encode(callbackUrl, StandardCharsets.UTF_8);
+
+        // 调用外部 CAS 服务器验票
+        String casXml;
+        try {
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(EXTERNAL_CAS_TIMEOUT_SECONDS))
+                    .build();
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(validateUrl))
+                    .timeout(Duration.ofSeconds(EXTERNAL_CAS_TIMEOUT_SECONDS))
+                    .GET()
+                    .build();
+            HttpResponse<String> httpResponse = httpClient.send(httpRequest,
+                    HttpResponse.BodyHandlers.ofString());
+            casXml = httpResponse.body();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("外部 CAS 验票请求被中断: ticket={}", ticket);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "外部 CAS 验票请求被中断");
+            return;
+        } catch (IOException e) {
+            log.warn("外部 CAS 验票请求失败: ticket={}, error={}", ticket, e.getMessage());
+            response.sendError(HttpServletResponse.SC_BAD_GATEWAY, "外部 CAS 服务器连接失败");
+            return;
+        }
+
+        // 从 CAS XML 中提取 username
+        Matcher matcher = CAS_USER_PATTERN.matcher(casXml);
+        if (!matcher.find()) {
+            log.warn("外部 CAS 验票失败: 无法从响应中提取用户名, ticket={}", ticket);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "外部 CAS 验票失败");
+            return;
+        }
+        String username = matcher.group(1).trim();
+
+        // 本地查找或自动注册用户
+        AuthUser user = findOrCreateUser(username);
+
+        // 解析权限集
+        PermissionSet ps = resolvePermissionSet(user.getId());
+
+        // 创建 TGT
+        TicketGrantingTicket tgt = ticketRegistry.createTgt(
+                user.getId(), user.getUsername(),
+                ps.getCode(), ps.getCapabilities());
+
+        // 设置 CASTGC cookie
+        Cookie tgcCookie = new Cookie(TGC_COOKIE_NAME, tgt.getId());
+        tgcCookie.setHttpOnly(true);
+        tgcCookie.setPath(TGC_COOKIE_PATH);
+        tgcCookie.setMaxAge(-1);
+        response.addCookie(tgcCookie);
+
+        // 签发 ST
+        ServiceTicket st = ticketRegistry.createSt(tgt, originalService);
+
+        // 302 重定向到 originalService?ticket=ST-xxx
+        String redirectUrl = buildRedirectUrl(originalService, st.getId());
+        log.info("外部 CAS 回调成功: username={}, redirectTo={}", username, originalService);
+        response.sendRedirect(redirectUrl);
+    }
+
+    /**
      * CAS 注销 -- 销毁 TGT 并清除 CASTGC cookie.
      *
      * @param tgcCookie CASTGC cookie 值（可选）
@@ -281,7 +475,7 @@ public class CasServerController {
      * @param response  HTTP 响应（用于清除 cookie）
      * @return 注销结果 JSON，包含可选的重定向 URL
      */
-    @GetMapping("/logout")
+    @GetMapping("/cas/logout")
     @ResponseBody
     public ResponseEntity<?> logout(
             @CookieValue(name = TGC_COOKIE_NAME, required = false) String tgcCookie,
@@ -310,6 +504,68 @@ public class CasServerController {
     }
 
     /* ---------- 私有辅助方法 ---------- */
+
+    /**
+     * 判断请求是否期望 JSON 响应.
+     *
+     * @param request HTTP 请求
+     * @return {@code true} 表示客户端期望 JSON 响应
+     */
+    private boolean isJsonRequest(HttpServletRequest request) {
+        String accept = request.getHeader(HEADER_ACCEPT);
+        return accept != null && accept.contains(JSON_MEDIA_PREFIX);
+    }
+
+    /**
+     * 包装 Map 为 JSON ResponseEntity（用于 loginPage 返回 Object 时的 JSON 路径）.
+     *
+     * @param body 响应体 Map
+     * @return ResponseEntity 实例
+     */
+    @ResponseBody
+    private ResponseEntity<Map<String, Object>> buildJsonResponse(Map<String, Object> body) {
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 根据用户名查找本地用户，不存在则自动注册.
+     *
+     * <p>自动注册的用户默认密码为空（不可通过本地密码登录），
+     * 默认权限集为 viewer。</p>
+     *
+     * @param username 用户名
+     * @return 本地用户实体
+     */
+    private AuthUser findOrCreateUser(String username) {
+        LambdaQueryWrapper<AuthUser> query = new LambdaQueryWrapper<>();
+        query.eq(AuthUser::getUsername, username);
+        AuthUser user = authUserMapper.selectOne(query);
+        if (user != null) {
+            return user;
+        }
+
+        // 自动注册
+        user = new AuthUser();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+        user.setNickname(username);
+        authUserMapper.insert(user);
+        log.info("外部 CAS 用户首次登录，已自动注册: username={}", username);
+        return user;
+    }
+
+    /**
+     * 构建外部 CAS 回调 URL（作为 service 参数传给外部 CAS 服务器）.
+     *
+     * @param ssoServerUrl    SSO 服务器地址（不使用，此处构建本地回调）
+     * @param originalService 最终业务系统 URL
+     * @return 本地 /cas/external-callback 的完整 URL
+     */
+    private String buildExternalCallbackUrl(String ssoServerUrl, String originalService) {
+        // 回调 URL 指向本地 auth-center，originalService 作为参数传回
+        return "/cas/external-callback?originalService="
+                + URLEncoder.encode(originalService, StandardCharsets.UTF_8);
+    }
 
     /**
      * 构建 CAS 验票成功的 XML 响应.

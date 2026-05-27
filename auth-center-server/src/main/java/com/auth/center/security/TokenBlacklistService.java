@@ -2,6 +2,7 @@ package com.auth.center.security;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -14,8 +15,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>通过 JTI (JWT ID) 跟踪已注销的 Token. 每条记录保留到 Token 原始过期时间,
  * 之后由定时任务自动清除 (过期的 Token 无需继续黑名单, 因为它们已自然失效).
+ *
+ * <p>当 Redis 实现可用时（{@code RedisTokenBlacklistService}），此 Bean 不会被创建。</p>
  */
 @Component
+@ConditionalOnMissingBean(RedisTokenBlacklistService.class)
 public class TokenBlacklistService {
 
     private static final Logger log = LoggerFactory.getLogger(TokenBlacklistService.class);

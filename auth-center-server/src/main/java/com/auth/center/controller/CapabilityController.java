@@ -24,7 +24,7 @@ import java.util.Map;
  * 端点批量注册自身提供的能力，认证中心统一管理和分发。</p>
  */
 @RestController
-@RequestMapping("/api/capabilities")
+@RequestMapping("/api/auth/capabilities")
 public class CapabilityController {
 
     private static final Logger log = LoggerFactory.getLogger(CapabilityController.class);

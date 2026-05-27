@@ -45,6 +45,12 @@ public class ServiceTicket {
     private boolean used;
 
     /**
+     * 无参构造 -- JSON 反序列化框架需要.
+     */
+    public ServiceTicket() {
+    }
+
+    /**
      * 创建新的 Service Ticket.
      *
      * @param tgtId         所属 TGT 的 ID
