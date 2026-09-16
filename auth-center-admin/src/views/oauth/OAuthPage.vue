@@ -24,6 +24,13 @@
               style="width: 100%"
             />
             <div class="hint">{{ $t('oauth.scopesHint') }}</div>
+            <a-alert
+              class="scope-explainer"
+              type="info"
+              show-icon
+              :message="$t('oauth.scopeWhat')"
+              :description="$t('oauth.scopeWhatHint')"
+            />
               </a-form-item>
             </a-col>
             <a-col :span="12">
@@ -46,7 +53,7 @@
 
       <SectionCard :title="$t('oauth.clients')" :icon="ApiOutlined" class="oauth-card">
         <template #extra><a-button type="primary" @click="clientModalOpen = true">{{ $t('oauth.addClient') }}</a-button></template>
-        <a-empty v-if="!clients.length" />
+        <a-empty v-if="!clients.length" :description="$t('oauth.noClients')" />
         <div v-for="client in clients" :key="client.id" class="client-row">
           <div class="client-main">
             <div class="client-title">{{ client.clientName }} <a-tag>{{ client.clientType }}</a-tag></div>
@@ -160,6 +167,7 @@ onMounted(load)
 .oauth-page { max-width: 1100px; }
 .oauth-card { margin-bottom: 16px; }
 .hint { color: var(--ds-text-faint); font-size: 12px; line-height: 1.5; margin-top: 4px; }
+.scope-explainer { margin-top: 12px; }
 .client-row { display: flex; align-items: flex-start; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--ds-border); }
 .client-row:last-child { border-bottom: 0; }
 .client-main { min-width: 0; flex: 1; }
