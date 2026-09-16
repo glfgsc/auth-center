@@ -5,17 +5,16 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-
 import java.time.LocalDateTime;
 
 /**
  * 跨系统能力注册实体.
  *
- * <p>对应数据库表 {@code auth_system_capability}，用于各子系统向认证中心注册自身提供的能力码。
- * 例如 BI 系统注册 {@code dashboard:view}、{@code dataset:create} 等能力，
- * Flow 系统注册 {@code flow:deploy}、{@code flow:execute} 等能力。</p>
+ * 对应数据库表 {@code auth_system_capability}，用于各子系统向认证中心注册自身提供的能力码。例如 BI 系统注册 {@code
+ * dashboard:view}、{@code dataset:create} 等能力， Flow 系统注册 {@code flow:deploy}、{@code flow:execute}
+ * 等能力。
  *
- * <p>能力码由 {@code systemCode + capabilityCode} 联合唯一。</p>
+ * 能力码由 {@code systemCode + capabilityCode} 联合唯一。
  */
 @TableName("auth_system_capability")
 public class SystemCapability {

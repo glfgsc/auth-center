@@ -1,42 +1,48 @@
 package com.auth.center.controller;
 
 import com.auth.center.common.Result;
+import com.auth.center.controller.request.SsoConfigSaveRequest;
+import com.auth.center.controller.request.SsoConfigTestRequest;
 import com.auth.center.entity.SsoConfig;
 import com.auth.center.service.ISsoConfigService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import jakarta.validation.Valid;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * SSO 管理控制器 -- 对齐前端 IdentityProvider 数据模型.
+ * SSO 管理控制器 -- 对齐前端 IdentityProvider 数据模型. 前端 PlatformSettingsPage 的 SSO tab 调用以下端点:
  *
- * <p>前端 PlatformSettingsPage 的 SSO tab 调用以下端点:
- * <ul>
- *     <li>{@code GET  /api/auth/sso/admin/cas}       — 读取 CAS 配置</li>
- *     <li>{@code POST /api/auth/sso/admin/cas}       — 创建/更新 CAS 配置</li>
- *     <li>{@code DELETE /api/auth/sso/admin/cas}      — 删除 CAS 配置</li>
- *     <li>{@code POST /api/auth/sso/admin/cas/test}   — 测试 CAS 服务器连通性</li>
- *     <li>{@code GET  /api/auth/sso/admin/callback-url} — 获取 CAS 回调地址</li>
- * </ul>
+ *   - {@code GET /api/auth/sso/admin/cas} — 读取 CAS 配置
+ *   - {@code POST /api/auth/sso/admin/cas} — 创建/更新 CAS 配置
+ *   - {@code DELETE /api/auth/sso/admin/cas} — 删除 CAS 配置
+ *   - {@code POST /api/auth/sso/admin/cas/test} — 测试 CAS 服务器连通性
+ *   - {@code GET /api/auth/sso/admin/callback-url} — 获取 CAS 回调地址
  *
- * <p>所有端点需认证（SecurityConfig 中 /api/auth/sso/admin/** → authenticated）。</p>
+ * 所有端点需认证（SecurityConfig 中 /api/auth/sso/admin/** → authenticated）。
  */
 @RestController
+@Validated
 @RequestMapping("/api/auth/sso/admin")
 public class SsoAdminController {
 
@@ -67,13 +73,20 @@ public class SsoAdminController {
     }
 
     /**
-     * 读取当前 CAS 配置 — 转为前端 IdentityProvider 格式.
+     * 读取某产品自己的 CAS 配置 — 转为前端 IdentityProvider 格式.
      *
-     * @return CAS 配置，不存在时 data=null
+     * 不回落 {@code global} 兜底档:管理台要能区分「本产品单独配置过」与「沿用兜底档」，
+     * 回落会让管理员把兜底档误认成本产品的配置，一保存就悄悄分叉出一份副本。
+     *
+     * @param system 产品编码，默认兜底档 {@code global}
+     * @return CAS 配置，该产品未单独配置时 data=null
      */
+    @PreAuthorize("@authPerm.hasCapability('admin:manage_idp')")
     @GetMapping("/cas")
-    public Result<Map<String, Object>> getCas() {
-        SsoConfig config = ssoConfigService.getConfig();
+    public Result<Map<String, Object>> getCas(
+            @RequestParam(required = false, defaultValue = ISsoConfigService.GLOBAL_SYSTEM_CODE)
+                    String system) {
+        SsoConfig config = ssoConfigService.getConfig(system);
         if (config == null) {
             return Result.ok(null);
         }
@@ -81,95 +94,125 @@ public class SsoAdminController {
     }
 
     /**
-     * 创建或更新 CAS 配置 — 接收前端 IdentityProvider 格式.
+     * 列出已单独配置过 SSO 的产品编码 — 管理台据此标注哪些产品没在用兜底档.
      *
-     * @param body 前端发送的 IdentityProvider 字段
+     * @return 产品编码列表
+     */
+    @PreAuthorize("@authPerm.hasCapability('admin:manage_idp')")
+    @GetMapping("/cas/configured-systems")
+    public Result<List<String>> configuredSystems() {
+        return Result.ok(
+                ssoConfigService.listConfigs().stream().map(SsoConfig::getSystemCode).toList());
+    }
+
+    /**
+     * 创建或更新某产品的 CAS 配置 — 接收前端 IdentityProvider 格式.
+     *
+     * @param system 产品编码，默认兜底档 {@code global}
+     * @param request SSO 配置保存请求
      * @return 保存后的配置
      */
+    @PreAuthorize("@authPerm.hasCapability('admin:manage_idp')")
     @PostMapping("/cas")
-    public Result<Map<String, Object>> saveCas(@RequestBody Map<String, Object> body) {
-        SsoConfig config = ssoConfigService.getConfig();
+    public Result<Map<String, Object>> saveCas(
+            @RequestParam(required = false, defaultValue = ISsoConfigService.GLOBAL_SYSTEM_CODE)
+                    String system,
+            @Valid @RequestBody SsoConfigSaveRequest request) {
+        SsoConfig config = ssoConfigService.getConfig(system);
         if (config == null) {
             config = new SsoConfig();
             config.setType(DEFAULT_TYPE);
+            config.setSystemCode(system);
         }
 
-        // 映射前端字段到实体
-        if (body.containsKey("name")) {
-            config.setDisplayName(String.valueOf(body.get("name")));
+        // 映射请求字段到实体
+        if (request.getName() != null) {
+            config.setDisplayName(request.getName());
         }
-        if (body.containsKey("icon")) {
-            config.setIcon(body.get("icon") != null ? String.valueOf(body.get("icon")) : "");
+        if (request.getIcon() != null) {
+            config.setIcon(request.getIcon());
         }
-        if (body.containsKey("enabled")) {
-            config.setEnabled(Boolean.TRUE.equals(body.get("enabled")));
+        if (request.getEnabled() != null) {
+            config.setEnabled(request.getEnabled());
         }
-        if (body.containsKey("loginMode")) {
-            String loginMode = String.valueOf(body.get("loginMode"));
-            config.setMode(loginMode);
+        if (request.getLoginMode() != null) {
+            config.setMode(request.getLoginMode());
         }
-        if (body.containsKey("configJson")) {
-            String configJson = String.valueOf(body.get("configJson"));
-            config.setConfigJson(configJson);
+        if (request.getConfigJson() != null) {
+            config.setConfigJson(request.getConfigJson());
             // 从 configJson 中提取 serverUrl 同步到顶层字段（向后兼容 public-config）
-            extractServerUrl(config, configJson);
+            extractServerUrl(config, request.getConfigJson());
         }
 
         SsoConfig saved = ssoConfigService.updateConfig(config);
-        log.info("SSO CAS 配置已保存: mode={}, enabled={}", saved.getMode(), saved.getEnabled());
+        log.info(
+                "SSO CAS 配置已保存: systemCode={}, mode={}, enabled={}",
+                saved.getSystemCode(),
+                saved.getMode(),
+                saved.getEnabled());
         return Result.ok(toIdentityProvider(saved));
     }
 
     /**
-     * 删除 CAS 配置 — 回到纯本地登录模式.
+     * 删除某产品的 CAS 配置 — 该产品回落到 {@code global} 兜底档；删的就是兜底档时回到纯本地登录.
      *
+     * @param system 产品编码，默认兜底档 {@code global}
      * @return 删除确认消息
      */
+    @PreAuthorize("@authPerm.hasCapability('admin:manage_idp')")
     @DeleteMapping("/cas")
-    public Result<String> deleteCas() {
-        ssoConfigService.deleteConfig();
-        log.info("SSO CAS 配置已删除");
+    public Result<String> deleteCas(
+            @RequestParam(required = false, defaultValue = ISsoConfigService.GLOBAL_SYSTEM_CODE)
+                    String system) {
+        ssoConfigService.deleteConfig(system);
+        log.info("SSO CAS 配置已删除: systemCode={}", system);
         return Result.ok("deleted");
     }
 
     /**
      * 测试 CAS 服务器连通性 — 探测 /login 端点可达性.
      *
-     * @param body 包含 configJson 的请求体
+     * @param request SSO 配置测试请求
      * @return 测试结果 {ok, message, endpoints}
      */
+    @PreAuthorize("@authPerm.hasCapability('admin:manage_idp')")
     @PostMapping("/cas/test")
-    public Result<Map<String, Object>> testCas(@RequestBody Map<String, Object> body) {
-        String configJson = body.get("configJson") != null
-                ? String.valueOf(body.get("configJson")) : "{}";
+    public Result<Map<String, Object>> testCas(@Valid @RequestBody SsoConfigTestRequest request) {
+        String configJson = request.getConfigJson() != null ? request.getConfigJson() : "{}";
         String serverUrl = extractServerUrlFromJson(configJson);
 
         if (serverUrl == null || serverUrl.isBlank()) {
-            return Result.ok(Map.of(
-                    "ok", false,
-                    "message", "CAS 服务器地址为空"
-            ));
+            return Result.ok(Map.of("ok", false, "message", "CAS 服务器地址为空"));
         }
 
         // 去除尾部斜杠
         serverUrl = serverUrl.replaceAll("/+$", "");
+
+        // SSRF 防护：校验 CAS 服务器 URL 必须是公网可达的 HTTP(S) 地址
+        String ssrfError = validatePublicUrl(serverUrl);
+        if (ssrfError != null) {
+            return Result.ok(Map.of("ok", false, "message", ssrfError));
+        }
+
         String loginEndpoint = serverUrl + "/login";
 
         Map<String, Object> result = new LinkedHashMap<>();
         Map<String, String> endpoints = new LinkedHashMap<>();
 
         try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(TEST_TIMEOUT_SECONDS))
-                    .followRedirects(HttpClient.Redirect.NEVER)
-                    .build();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(loginEndpoint))
-                    .timeout(Duration.ofSeconds(TEST_TIMEOUT_SECONDS))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = client.send(request,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpClient client =
+                    HttpClient.newBuilder()
+                            .connectTimeout(Duration.ofSeconds(TEST_TIMEOUT_SECONDS))
+                            .followRedirects(HttpClient.Redirect.NEVER)
+                            .build();
+            HttpRequest httpRequest =
+                    HttpRequest.newBuilder()
+                            .uri(URI.create(loginEndpoint))
+                            .timeout(Duration.ofSeconds(TEST_TIMEOUT_SECONDS))
+                            .GET()
+                            .build();
+            HttpResponse<String> response =
+                    client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             int status = response.statusCode();
             endpoints.put("login", loginEndpoint + " → " + status);
@@ -200,14 +243,16 @@ public class SsoAdminController {
      *
      * @return 包含 base 和 pattern 的回调地址信息
      */
+    @PreAuthorize("@authPerm.hasCapability('admin:manage_idp')")
     @GetMapping("/callback-url")
     public Result<Map<String, String>> callbackUrl() {
         // 回调 URL 指向网关地址 — 由网关转发到 auth-center
         // 实际部署时通过环境变量覆盖
-        return Result.ok(Map.of(
-                "base", "/cas/external-callback",
-                "pattern", "/cas/external-callback?ticket={ticket}&originalService={service}"
-        ));
+        return Result.ok(
+                Map.of(
+                        "base", "/cas/external-callback",
+                        "pattern",
+                                "/cas/external-callback?ticket={ticket}&originalService={service}"));
     }
 
     /* ---------- 私有辅助方法 ---------- */
@@ -221,6 +266,7 @@ public class SsoAdminController {
     private Map<String, Object> toIdentityProvider(SsoConfig config) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", config.getId());
+        map.put("systemCode", config.getSystemCode());
         map.put("name", config.getDisplayName() != null ? config.getDisplayName() : "CAS");
         map.put("providerType", DEFAULT_TYPE);
         map.put("slug", DEFAULT_SLUG);
@@ -229,15 +275,19 @@ public class SsoAdminController {
         map.put("loginMode", config.getMode() != null ? config.getMode() : "disabled");
         map.put("icon", config.getIcon() != null ? config.getIcon() : "");
         map.put("workspaceId", null);
-        map.put("createTime", config.getCreatedAt() != null ? config.getCreatedAt().toString() : null);
-        map.put("updateTime", config.getUpdatedAt() != null ? config.getUpdatedAt().toString() : null);
+        map.put(
+                "createTime",
+                config.getCreatedAt() != null ? config.getCreatedAt().toString() : null);
+        map.put(
+                "updateTime",
+                config.getUpdatedAt() != null ? config.getUpdatedAt().toString() : null);
         return map;
     }
 
     /**
      * 从 configJson 字符串中提取 serverUrl 并同步到实体顶层字段.
      *
-     * @param config     SSO 配置实体
+     * @param config SSO 配置实体
      * @param configJson JSON 字符串
      */
     private void extractServerUrl(SsoConfig config, String configJson) {
@@ -276,5 +326,61 @@ public class SsoAdminController {
             return null;
         }
         return configJson.substring(startQuote + 1, endQuote);
+    }
+
+    /**
+     * SSRF 防护 — 校验 URL 为公网可达的 HTTP(S) 地址。
+     *
+     * 拒绝私有网段（10/8, 172.16/12, 192.168/16）、环回、链路本地和元数据端点，防止管理员通过 CAS 测试端点探测内网。
+     *
+     * @param url 待校验 URL
+     * @return 错误消息（通过校验返回 null）
+     */
+    private static String validatePublicUrl(String url) {
+        URI uri;
+        try {
+            uri = URI.create(url);
+        } catch (IllegalArgumentException e) {
+            return "URL 格式无效";
+        }
+
+        String scheme = uri.getScheme();
+        if (scheme == null
+                || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+            return "仅允许 http/https 协议";
+        }
+
+        String host = uri.getHost();
+        if (host == null || host.isBlank()) {
+            return "URL 缺少主机名";
+        }
+
+        InetAddress[] addresses;
+        try {
+            addresses = InetAddress.getAllByName(host);
+        } catch (UnknownHostException e) {
+            return "无法解析主机名: " + host;
+        }
+
+        for (InetAddress addr : addresses) {
+            if (addr.isLoopbackAddress()
+                    || addr.isSiteLocalAddress()
+                    || addr.isLinkLocalAddress()
+                    || addr.isAnyLocalAddress()
+                    || isMetadataAddress(addr)) {
+                return "不允许连接到内网/本地地址: " + addr.getHostAddress();
+            }
+        }
+        return null;
+    }
+
+    /** 云厂商元数据端点 169.254.169.254 */
+    private static boolean isMetadataAddress(InetAddress addr) {
+        byte[] bytes = addr.getAddress();
+        return bytes.length == 4
+                && (bytes[0] & 0xFF) == 169
+                && (bytes[1] & 0xFF) == 254
+                && (bytes[2] & 0xFF) == 169
+                && (bytes[3] & 0xFF) == 254;
     }
 }

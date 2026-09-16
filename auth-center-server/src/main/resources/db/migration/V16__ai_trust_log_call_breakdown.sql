@@ -1,0 +1,22 @@
+-- V16:逐次用量归属 —— 把「花了多少」和「服务商那边叫什么」钉在一起。
+--
+-- V15 存了一串请求 ID,但它们**没有归属**:一轮 17.4k 配十个 ID,不知道哪个 ID 花了多少,
+-- 拿去服务商控制台仍然只能一个个点开肉眼比。真要对账,缺的是逐次的映射。
+--
+-- 之所以到现在才有,是因为这两样来自**不同的层**,此前从未 join:
+--   · 回调层(on_llm_end)有逐次用量,但只有**非流式**调用带服务商原生 ID
+--     (流式下 llm_output 为空,退化成 LangChain 的 run--<uuid>,服务商侧查不到);
+--   · HTTP 层有每次出网的真 ID(响应头里取),但拿不到用量(读响应体会把流吃掉)。
+-- 现在由 HTTP 层把 ID 写进 ContextVar、回调层在同一任务内取回完成配对 —— 并发调用
+-- 靠任务隔离天然不串号。
+--
+-- 形状:``[{requestId, inputTokens, outputTokens, cachedInputTokens, reasoningTokens, streamed}]``
+-- 逐项之和恒等于本行的 input_tokens / output_tokens(否则明细与合计自相矛盾,应视为 bug)。
+-- ``streamed=true`` 表示该次拿不到服务商原文,对账时可疑度更高。
+--
+-- 与 provider_request_ids(V15)并存而非替换:那一列是「全部 ID 一把复制」的快捷索引,
+-- 这一列是逐次归属。用途不同,且旧行只有前者。
+--
+-- 可空:HTTP 层留痕未启用、或该轮早于本次上线时留 NULL。
+
+ALTER TABLE auth_ai_trust_log ADD COLUMN llm_call_breakdown TEXT NULL COMMENT '逐次用量归属 JSON 数组:[{requestId,inputTokens,outputTokens,cachedInputTokens,reasoningTokens,streamed}]';

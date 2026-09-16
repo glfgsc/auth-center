@@ -1,6 +1,7 @@
--- =============================================
--- Auth Center 数据库初始化脚本
--- =============================================
+-- auth_center 初始化 schema(Flyway 基线)
+-- 后续 schema 变更新增 V2__*.sql、V3__*.sql ...
+-- 全部 CREATE TABLE IF NOT EXISTS / INSERT IGNORE：对「引入 Flyway 时已存在数据」的
+-- 老库以 baseline-on-migrate 从此版本重放时天然为空操作，不破坏既有数据。
 
 -- 认证用户表
 CREATE TABLE IF NOT EXISTS auth_user (

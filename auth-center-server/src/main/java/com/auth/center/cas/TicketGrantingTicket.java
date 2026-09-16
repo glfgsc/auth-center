@@ -5,8 +5,7 @@ import java.util.UUID;
 /**
  * CAS TGT (Ticket Granting Ticket) -- 代表一个已认证的用户会话.
  *
- * <p>TGT 在用户成功登录后创建, 有效期内可用于签发 Service Ticket.
- * TGT ID 格式为 {@code TGT-} 加 UUID.
+ * TGT 在用户成功登录后创建,有效期内可用于签发 Service Ticket. TGT ID 格式为 {@code TGT-} 加 UUID.
  */
 public class TicketGrantingTicket {
 
@@ -34,24 +33,20 @@ public class TicketGrantingTicket {
     /** 过期时间戳 (毫秒) */
     private long expiresAt;
 
-    /**
-     * 无参构造 -- JSON 反序列化框架需要.
-     */
-    public TicketGrantingTicket() {
-    }
+    /** 无参构造 -- JSON 反序列化框架需要. */
+    public TicketGrantingTicket() {}
 
     /**
      * 创建新的 TGT.
      *
-     * @param userId        用户 ID
-     * @param username      用户名
+     * @param userId 用户 ID
+     * @param username 用户名
      * @param permissionSet 权限集名称
-     * @param capabilities  逗号分隔的能力列表
-     * @param ttlMs         有效期 (毫秒)
+     * @param capabilities 逗号分隔的能力列表
+     * @param ttlMs 有效期 (毫秒)
      */
-    public TicketGrantingTicket(Long userId, String username,
-                                String permissionSet, String capabilities,
-                                long ttlMs) {
+    public TicketGrantingTicket(
+            Long userId, String username, String permissionSet, String capabilities, long ttlMs) {
         this.id = TGT_PREFIX + UUID.randomUUID();
         this.userId = userId;
         this.username = username;

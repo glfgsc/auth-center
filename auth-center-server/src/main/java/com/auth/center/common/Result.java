@@ -3,7 +3,7 @@ package com.auth.center.common;
 /**
  * 统一 API 响应包装器.
  *
- * <p>所有 Controller 层接口统一返回此对象，前端根据 {@code code} 判断请求是否成功。</p>
+ * 所有 Controller 层接口统一返回此对象，前端根据 {@code code} 判断请求是否成功。
  *
  * @param <T> 响应数据类型
  */
@@ -24,18 +24,15 @@ public class Result<T> {
     /** 响应数据 */
     private T data;
 
-    /**
-     * 无参构造——序列化框架需要.
-     */
-    public Result() {
-    }
+    /** 无参构造——序列化框架需要. */
+    public Result() {}
 
     /**
      * 全参构造.
      *
-     * @param code    状态码
+     * @param code 状态码
      * @param message 提示消息
-     * @param data    响应数据
+     * @param data 响应数据
      */
     public Result(int code, String message, T data) {
         this.code = code;
@@ -49,7 +46,7 @@ public class Result<T> {
      * 成功响应（携带数据）.
      *
      * @param data 响应数据
-     * @param <T>  数据类型
+     * @param <T> 数据类型
      * @return 成功的 Result 实例
      */
     public static <T> Result<T> ok(T data) {
@@ -70,7 +67,7 @@ public class Result<T> {
      * 失败响应（仅消息）.
      *
      * @param message 错误提示
-     * @param <T>     数据类型
+     * @param <T> 数据类型
      * @return 失败的 Result 实例
      */
     public static <T> Result<T> fail(String message) {
@@ -80,9 +77,9 @@ public class Result<T> {
     /**
      * 失败响应（自定义状态码 + 消息）.
      *
-     * @param code    自定义错误码
+     * @param code 自定义错误码
      * @param message 错误提示
-     * @param <T>     数据类型
+     * @param <T> 数据类型
      * @return 失败的 Result 实例
      */
     public static <T> Result<T> fail(int code, String message) {

@@ -5,14 +5,15 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 /**
  * 用户组实体.
  *
- * <p>对应数据库表 {@code auth_group}，用于批量权限管理的逻辑分组。
- * 系统预置 {@code all_users} 组包含所有注册用户，不可删除。</p>
+ * 对应数据库表 {@code auth_group}，用于批量权限管理的逻辑分组。系统预置 {@code all_users} 组包含所有注册用户，不可删除。
  */
 @TableName("auth_group")
 public class AuthGroup {
@@ -21,10 +22,23 @@ public class AuthGroup {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /**
+     * 所属产品，对齐 {@code auth_system.code}；{@code global} 表示不属于任何单一产品的全平台组。
+     *
+     * 唯一键是 {@code (system_code, code)}，故不同产品可以各有一个同编码的组。
+     */
+    @Size(max = 32, message = "产品编码长度不能超过 32")
+    private String systemCode;
+
     /** 唯一编码，例如 {@code all_users} */
+    @NotBlank(message = "编码不能为空")
+    @Pattern(regexp = "^[A-Za-z0-9_.-]+$", message = "编码只能包含字母、数字、下划线、点和连字符")
+    @Size(max = 50, message = "编码长度不能超过 50")
     private String code;
 
     /** 显示名称 */
+    @NotBlank(message = "名称不能为空")
+    @Size(max = 100, message = "名称长度不能超过 100")
     private String name;
 
     /** 描述 */
@@ -45,6 +59,24 @@ public class AuthGroup {
     private LocalDateTime updatedAt;
 
     /* ---------- Getters / Setters ---------- */
+
+    /**
+     * 获取所属产品编码.
+     *
+     * @return 产品编码
+     */
+    public String getSystemCode() {
+        return systemCode;
+    }
+
+    /**
+     * 设置所属产品编码.
+     *
+     * @param systemCode 产品编码
+     */
+    public void setSystemCode(String systemCode) {
+        this.systemCode = systemCode;
+    }
 
     /**
      * 获取主键 ID.

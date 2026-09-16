@@ -5,19 +5,17 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-
 import java.time.LocalDateTime;
 
 /**
  * SSO 配置实体 -- 外部 CAS 集成配置.
  *
- * <p>对应数据库表 {@code auth_sso_config}，存储外部 SSO 服务器集成参数。
- * 支持三种运行模式:
- * <ul>
- *     <li>{@code disabled} - 关闭外部 SSO，仅使用内置认证</li>
- *     <li>{@code mixed} - 混合模式，同时显示本地登录和 SSO 按钮</li>
- *     <li>{@code enforced} - 强制 SSO，所有用户必须通过外部 SSO 登录</li>
- * </ul>
+ * 对应数据库表 {@code auth_sso_config}，存储外部 SSO 服务器集成参数。一个产品一行（{@code systemCode}），唯一键 {@code
+ * (system_code, type)}；产品没有自己那一行时登录期回落到 {@code global} 兜底档。支持三种运行模式:
+ *
+ *   - {@code disabled} - 关闭外部 SSO，仅使用内置认证
+ *   - {@code mixed} - 混合模式，同时显示本地登录和 SSO 按钮
+ *   - {@code enforced} - 强制 SSO，所有用户必须通过外部 SSO 登录
  */
 @TableName("auth_sso_config")
 public class SsoConfig {
@@ -25,6 +23,13 @@ public class SsoConfig {
     /** 主键 ID，自增 */
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    /**
+     * 所属产品，对齐 {@code auth_system.code}（bi / agent / tracking / auth_center / global）。
+     *
+     * {@code global} 是兜底档：产品没有自己那一行时，登录期回落到它。
+     */
+    private String systemCode;
 
     /** SSO 类型，当前支持 CAS */
     private String type;
@@ -73,6 +78,24 @@ public class SsoConfig {
      */
     public void setId(Long id) {
         this.id = id;
+    }
+
+    /**
+     * 获取所属产品编码.
+     *
+     * @return 产品编码
+     */
+    public String getSystemCode() {
+        return systemCode;
+    }
+
+    /**
+     * 设置所属产品编码.
+     *
+     * @param systemCode 产品编码
+     */
+    public void setSystemCode(String systemCode) {
+        this.systemCode = systemCode;
     }
 
     /**

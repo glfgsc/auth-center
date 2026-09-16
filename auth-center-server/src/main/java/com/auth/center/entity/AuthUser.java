@@ -7,14 +7,15 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 /**
  * 认证用户实体.
  *
- * <p>对应数据库表 {@code auth_user}，存储系统用户的基础认证信息。
- * 密码字段使用 BCrypt 加密存储，序列化时仅允许写入不允许读出。</p>
+ * 对应数据库表 {@code auth_user}，存储系统用户的基础认证信息。密码字段使用 BCrypt 加密存储，序列化时仅允许写入不允许读出。
  */
 @TableName("auth_user")
 public class AuthUser {
@@ -24,10 +25,13 @@ public class AuthUser {
     private Long id;
 
     /** 用户名，唯一 */
+    @NotBlank(message = "用户名不能为空")
+    @Size(max = 50, message = "用户名长度不能超过 50")
     private String username;
 
     /** 密码（BCrypt 哈希），仅允许反序列化写入 */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Size(min = 6, max = 72, message = "密码长度必须在 6 到 72 之间")
     private String password;
 
     /** 昵称 */
@@ -37,6 +41,8 @@ public class AuthUser {
     private String avatar;
 
     /** 邮箱 */
+    @Email(message = "邮箱格式不正确")
+    @Size(max = 200, message = "邮箱长度不能超过 200")
     private String email;
 
     /** 手机号 */
@@ -51,8 +57,7 @@ public class AuthUser {
     private LocalDateTime updateTime;
 
     /** 逻辑删除标记：0=未删除，1=已删除 */
-    @TableLogic
-    private Integer deleted;
+    @TableLogic private Integer deleted;
 
     /* ---------- Getters / Setters ---------- */
 

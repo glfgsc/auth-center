@@ -1,0 +1,486 @@
+[ {
+  "patterns" : [ "/.well-known/jwks.json" ],
+  "methods" : [ "GET" ],
+  "handler" : "JwksController#jwks",
+  "returnType" : "Map"
+}, {
+  "patterns" : [ "/.well-known/oauth-authorization-server" ],
+  "methods" : [ "GET" ],
+  "handler" : "OAuthMetadataController#metadata",
+  "returnType" : "Map"
+}, {
+  "patterns" : [ "/api/auth/admin/audit" ],
+  "methods" : [ "GET" ],
+  "handler" : "AuditController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/audit/trust" ],
+  "methods" : [ "GET" ],
+  "handler" : "AiTrustController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/audit/trust/{requestId}/detail" ],
+  "methods" : [ "GET" ],
+  "handler" : "AiTrustController#detail",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/audit/usage/breakdown" ],
+  "methods" : [ "GET" ],
+  "handler" : "AiUsageController#breakdown",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/audit/usage/series" ],
+  "methods" : [ "GET" ],
+  "handler" : "AiUsageController#series",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/audit/usage/summary" ],
+  "methods" : [ "GET" ],
+  "handler" : "AiUsageController#summary",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/config" ],
+  "methods" : [ "GET" ],
+  "handler" : "PlatformConfigController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/config/systems" ],
+  "methods" : [ "GET" ],
+  "handler" : "PlatformConfigController#systems",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/config/{id}" ],
+  "methods" : [ "PUT" ],
+  "handler" : "PlatformConfigController#update",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/config/{id}/reset" ],
+  "methods" : [ "POST" ],
+  "handler" : "PlatformConfigController#reset",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/connected-apps" ],
+  "methods" : [ "GET" ],
+  "handler" : "ConnectedAppController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/connected-apps" ],
+  "methods" : [ "POST" ],
+  "handler" : "ConnectedAppController#create",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/connected-apps/{id}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "ConnectedAppController#delete",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/connected-apps/{id}" ],
+  "methods" : [ "PUT" ],
+  "handler" : "ConnectedAppController#update",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/connected-apps/{id}/secrets" ],
+  "methods" : [ "POST" ],
+  "handler" : "ConnectedAppController#generateSecret",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/connected-apps/{id}/secrets/{secretId}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "ConnectedAppController#revokeSecret",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups" ],
+  "methods" : [ "GET" ],
+  "handler" : "GroupAdminController#listAll",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups" ],
+  "methods" : [ "POST" ],
+  "handler" : "GroupAdminController#create",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups/{id}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "GroupAdminController#delete",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups/{id}" ],
+  "methods" : [ "GET" ],
+  "handler" : "GroupAdminController#getById",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups/{id}" ],
+  "methods" : [ "PUT" ],
+  "handler" : "GroupAdminController#update",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups/{id}/members" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "GroupAdminController#removeMembers",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups/{id}/members" ],
+  "methods" : [ "GET" ],
+  "handler" : "GroupAdminController#listMembers",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/groups/{id}/members" ],
+  "methods" : [ "POST" ],
+  "handler" : "GroupAdminController#addMembers",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/login-history" ],
+  "methods" : [ "GET" ],
+  "handler" : "LoginHistoryController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/notification-credentials" ],
+  "methods" : [ "GET" ],
+  "handler" : "NotificationCredentialController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/notification-credentials" ],
+  "methods" : [ "POST" ],
+  "handler" : "NotificationCredentialController#create",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/notification-credentials/types" ],
+  "methods" : [ "GET" ],
+  "handler" : "NotificationCredentialController#types",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/notification-credentials/{id}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "NotificationCredentialController#delete",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/notification-credentials/{id}" ],
+  "methods" : [ "GET" ],
+  "handler" : "NotificationCredentialController#get",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/notification-credentials/{id}" ],
+  "methods" : [ "PUT" ],
+  "handler" : "NotificationCredentialController#update",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/notification-credentials/{id}/test" ],
+  "methods" : [ "POST" ],
+  "handler" : "NotificationCredentialController#test",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/oauth/clients" ],
+  "methods" : [ "GET" ],
+  "handler" : "OAuthAdminController#clients",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/oauth/clients" ],
+  "methods" : [ "POST" ],
+  "handler" : "OAuthAdminController#createClient",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/oauth/clients/{id}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "OAuthAdminController#deleteClient",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/oauth/clients/{id}" ],
+  "methods" : [ "PUT" ],
+  "handler" : "OAuthAdminController#updateClient",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/oauth/settings" ],
+  "methods" : [ "GET" ],
+  "handler" : "OAuthAdminController#settings",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/oauth/settings" ],
+  "methods" : [ "PUT" ],
+  "handler" : "OAuthAdminController#saveSettings",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/permission-sets" ],
+  "methods" : [ "GET" ],
+  "handler" : "PermissionSetController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/permission-sets" ],
+  "methods" : [ "POST" ],
+  "handler" : "PermissionSetController#save",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/permission-sets/{id}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "PermissionSetController#delete",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/permission-sets/{id}" ],
+  "methods" : [ "GET" ],
+  "handler" : "PermissionSetController#getById",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/permission-sets/{id}" ],
+  "methods" : [ "PUT" ],
+  "handler" : "PermissionSetController#update",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/sessions" ],
+  "methods" : [ "GET" ],
+  "handler" : "SessionAdminController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/sessions/user/{userId}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "SessionAdminController#revokeUser",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/sessions/{sessionId}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "SessionAdminController#revoke",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/systems" ],
+  "methods" : [ "GET" ],
+  "handler" : "SystemController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users" ],
+  "methods" : [ "GET" ],
+  "handler" : "UserAdminController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users" ],
+  "methods" : [ "POST" ],
+  "handler" : "UserAdminController#create",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users/permission-sets" ],
+  "methods" : [ "GET" ],
+  "handler" : "UserAdminController#listPermissionSets",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users/{id}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "UserAdminController#delete",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users/{id}" ],
+  "methods" : [ "GET" ],
+  "handler" : "UserAdminController#getById",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users/{id}" ],
+  "methods" : [ "PUT" ],
+  "handler" : "UserAdminController#update",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users/{userId}/permission-set" ],
+  "methods" : [ "PUT" ],
+  "handler" : "UserAdminController#assignPermissionSet",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/admin/users/{userId}/permission-set/{psId}" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "UserAdminController#removePermissionSet",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/audit/internal/ingest" ],
+  "methods" : [ "POST" ],
+  "handler" : "AuditIngestController#ingest",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/audit/internal/trust" ],
+  "methods" : [ "POST" ],
+  "handler" : "AiTrustIngestController#ingest",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/capabilities" ],
+  "methods" : [ "GET" ],
+  "handler" : "CapabilityController#list",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/capabilities/register" ],
+  "methods" : [ "POST" ],
+  "handler" : "CapabilityController#register",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/cas/ticket-validate" ],
+  "methods" : [ "POST" ],
+  "handler" : "CasServerController#ticketValidate",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/api/auth/config/internal/values" ],
+  "methods" : [ "GET" ],
+  "handler" : "PlatformConfigInternalController#values",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/embed/internal/session" ],
+  "methods" : [ "POST" ],
+  "handler" : "EmbedInternalController#mintSession",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/embed/internal/session-from-assertion" ],
+  "methods" : [ "POST" ],
+  "handler" : "EmbedInternalController#sessionFromAssertion",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/groups/internal/user-groups/{userId}" ],
+  "methods" : [ "GET" ],
+  "handler" : "GroupReadController#getGroupIdsByUserId",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/groups/list" ],
+  "methods" : [ "GET" ],
+  "handler" : "GroupReadController#listAll",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/info" ],
+  "methods" : [ "GET" ],
+  "handler" : "AuthController#getUserInfo",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/internal/notification-credentials/options" ],
+  "methods" : [ "GET" ],
+  "handler" : "NotificationCredentialInternalController#options",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/api/auth/internal/notification-credentials/resolve" ],
+  "methods" : [ "GET" ],
+  "handler" : "NotificationCredentialInternalController#resolve",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/api/auth/login" ],
+  "methods" : [ "POST" ],
+  "handler" : "AuthController#login",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/logout" ],
+  "methods" : [ "POST" ],
+  "handler" : "AuthController#logout",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/oauth/public-config" ],
+  "methods" : [ "GET" ],
+  "handler" : "OAuthPublicConfigController#publicConfig",
+  "returnType" : "Map"
+}, {
+  "patterns" : [ "/api/auth/permission-set" ],
+  "methods" : [ "GET" ],
+  "handler" : "AuthController#getPermissionSet",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/permission-sets/internal/user-permission-set/{userId}" ],
+  "methods" : [ "GET" ],
+  "handler" : "PermissionSetReadController#getUserPermissionSet",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/permission-sets/list" ],
+  "methods" : [ "GET" ],
+  "handler" : "PermissionSetReadController#listAll",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/public-key" ],
+  "methods" : [ "GET" ],
+  "handler" : "AuthController#loginPublicKey",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/refresh" ],
+  "methods" : [ "POST" ],
+  "handler" : "AuthController#refresh",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/admin/callback-url" ],
+  "methods" : [ "GET" ],
+  "handler" : "SsoAdminController#callbackUrl",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/admin/cas" ],
+  "methods" : [ "DELETE" ],
+  "handler" : "SsoAdminController#deleteCas",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/admin/cas" ],
+  "methods" : [ "GET" ],
+  "handler" : "SsoAdminController#getCas",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/admin/cas" ],
+  "methods" : [ "POST" ],
+  "handler" : "SsoAdminController#saveCas",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/admin/cas/configured-systems" ],
+  "methods" : [ "GET" ],
+  "handler" : "SsoAdminController#configuredSystems",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/admin/cas/test" ],
+  "methods" : [ "POST" ],
+  "handler" : "SsoAdminController#testCas",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/cas/logout-redirect" ],
+  "methods" : [ "POST" ],
+  "handler" : "CasServerController#logoutRedirect",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/sso/public-config" ],
+  "methods" : [ "GET" ],
+  "handler" : "SsoConfigController#getPublicConfig",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/users/internal/directory" ],
+  "methods" : [ "GET" ],
+  "handler" : "UserDirectoryInternalController#directory",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/api/auth/users/search" ],
+  "methods" : [ "GET" ],
+  "handler" : "UserSearchController#search",
+  "returnType" : "Result"
+}, {
+  "patterns" : [ "/cas/external-callback" ],
+  "methods" : [ "GET" ],
+  "handler" : "CasServerController#externalCallback",
+  "returnType" : "void"
+}, {
+  "patterns" : [ "/cas/login" ],
+  "methods" : [ "GET" ],
+  "handler" : "CasServerController#loginPage",
+  "returnType" : "Object"
+}, {
+  "patterns" : [ "/cas/login" ],
+  "methods" : [ "POST" ],
+  "handler" : "CasServerController#loginSubmit",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/cas/logout" ],
+  "methods" : [ "GET" ],
+  "handler" : "CasServerController#logout",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/cas/p3/serviceValidate", "/cas/serviceValidate" ],
+  "methods" : [ "GET" ],
+  "handler" : "CasServerController#serviceValidate",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/oauth2/authorize" ],
+  "methods" : [ "GET" ],
+  "handler" : "OAuthAuthorizationController#authorize",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/oauth2/authorize/cas-callback" ],
+  "methods" : [ "GET" ],
+  "handler" : "OAuthAuthorizationController#authorizationCallback",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/oauth2/revoke" ],
+  "methods" : [ "POST" ],
+  "handler" : "OAuthAuthorizationController#revoke",
+  "returnType" : "ResponseEntity"
+}, {
+  "patterns" : [ "/oauth2/token" ],
+  "methods" : [ "POST" ],
+  "handler" : "OAuthAuthorizationController#token",
+  "returnType" : "ResponseEntity"
+} ]

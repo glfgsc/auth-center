@@ -16,7 +16,7 @@
     <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>Auth Center</name>
-    <description>Centralized authentication and authorization service — CAS Server + JWT + RBAC.</description>
+    <description>Centralized authentication and authorization service — CAS + OAuth 2.1 + JWT + RBAC.</description>
 
     <modules>
         <module>auth-center-server</module>
@@ -27,10 +27,33 @@
         <java.version>21</java.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <jjwt.version>0.12.3</jjwt.version>
+        <!-- Jackson 版本上浮至 2.19.0(≥2.16 消除 CVE-2023-35116 的 jackson-databind 深层嵌套 DoS;与 bi-backend 对齐)。 -->
+        <jackson-bom.version>2.19.0</jackson-bom.version>
+        <!--
+          Nacos Config 的版本轴必须跟着上面 spring-boot-starter-parent 的 3.2.5 走,
+          不能照抄 bi-backend / agent-server 的 2025.0.0.0(那条线对应 Boot 3.5)。
+          本工程升 Boot 时这两个版本要一起抬。
+        -->
+        <spring-cloud.version>2023.0.1</spring-cloud.version>
+        <spring-cloud-alibaba.version>2023.0.1.2</spring-cloud-alibaba.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
@@ -53,4 +76,30 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <!-- Spotless:google-java-format AOSP 风格(4 空格),与 agent / bi-backend 同配置 ——
+                 含缩进/换行/行尾空白/文件末尾换行。提交前跑 spotless:apply,校验跑 spotless:check。
+                 google-java-format 需 jdk.compiler 内部包 add-exports,见 auth-center/.mvn/jvm.config。 -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.43.0</version>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                        <googleJavaFormat>
+                            <style>AOSP</style>
+                            <!-- 注释不参与重排:自动重排会按列宽硬折中文、并在每个段落前插回 <p>。 -->
+                            <formatJavadoc>false</formatJavadoc>
+                        </googleJavaFormat>
+                    </java>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

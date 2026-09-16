@@ -1,0 +1,37 @@
+// 应用卡片与 JWKS 面板共用的信息行样式。scoped 样式无法跨组件继承,故以 @use 内联到各自
+// 作用域,而不是把同一套 .ea-info 复制两份。
+
+.ea-spacer {
+  flex: 1;
+}
+
+.ea-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  min-width: 0;
+}
+.ea-info__label {
+  font-size: 11px;
+  color: var(--ds-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  min-width: 72px;
+}
+.ea-info__val {
+  font-size: 12.5px;
+  color: var(--ds-text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+// 空行占位(密钥列表 / JWKS 列表共用)
+.ea-secret-row--empty {
+  color: var(--ds-text-faint);
+  font-size: 12px;
+  padding: 4px 0;
+}

@@ -2,15 +2,12 @@ package com.auth.center.mapper;
 
 import com.auth.center.entity.AuthGroupMember;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import java.util.List;
-
-/**
- * 用户组成员 Mapper -- 支持 JOIN 查询用户信息和按用户查组 ID 列表.
- */
+/** 用户组成员 Mapper -- 支持 JOIN 查询用户信息和按用户查组 ID 列表. */
 @Mapper
 public interface AuthGroupMemberMapper extends BaseMapper<AuthGroupMember> {
 
@@ -20,11 +17,12 @@ public interface AuthGroupMemberMapper extends BaseMapper<AuthGroupMember> {
      * @param groupId 组 ID
      * @return 带用户信息的成员列表
      */
-    @Select("SELECT gm.*, u.username, u.nickname, u.email " +
-            "FROM auth_group_member gm " +
-            "INNER JOIN auth_user u ON gm.user_id = u.id " +
-            "WHERE gm.group_id = #{groupId} " +
-            "ORDER BY gm.created_at")
+    @Select(
+            "SELECT gm.*, u.username, u.nickname, u.email "
+                    + "FROM auth_group_member gm "
+                    + "INNER JOIN auth_user u ON gm.user_id = u.id "
+                    + "WHERE gm.group_id = #{groupId} "
+                    + "ORDER BY gm.created_at")
     List<AuthGroupMember> selectMembersWithUserInfo(@Param("groupId") Long groupId);
 
     /**

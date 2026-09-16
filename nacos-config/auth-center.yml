@@ -1,0 +1,70 @@
+# ============================================================================
+# Nacos 配置 — auth-center.yml
+# ----------------------------------------------------------------------------
+# 数织 · 中心(CAS + OAuth 2.1 Authorization Server + JWT + RBAC)的运行期配置。
+#
+# 占位符 ${ENV:默认值} 里 env 优先级高于本文件 —— 要让 Nacos 接管一个键,必须同时把
+# k8s 清单里对应的 env 删掉,否则 env 会静默压过这里,表现为「改了 Nacos 没生效」。
+#
+# 不放这里的三类:
+#   ① 引导期 —— SPRING_PROFILES_ACTIVE / NACOS_*:决定「去哪读配置」,自身不可能来自配置。
+#   ② JVM 层 —— JAVA_OPTS / TZ:容器 entrypoint 与 JVM 启动时就要,Spring 读到时已经晚了。
+#   ③ 部署身份与密钥 —— SERVER_PORT / DB_* / REDIS_*:端口要与 k8s containerPort、
+#      Service targetPort 对齐,连接凭据归 k8s Secret(auth-center-db / bi-redis-credentials)。
+# ============================================================================
+
+# ── 优雅停机 ──────────────────────────────────────────────────────────────────
+# 调大要连带看 k8s 的 terminationGracePeriodSeconds:后者更短的话 Pod 会先被 SIGKILL。
+server:
+  shutdown: ${SERVER_SHUTDOWN:graceful}
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_PHASE_TIMEOUT:20s}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+  thymeleaf:
+    # 登录页模板缓存。镜像内默认是 false(便于本地改模板即时可见),生产应为 true ——
+    # 关缓存意味着每次渲染登录页都重新解析模板。
+    cache: ${THYMELEAF_CACHE:true}
+
+auth:
+  jwt:
+    # RSA 密钥对目录:首次启动自动生成并持久化。换目录等于换密钥对 —— 所有在途 token 立即失效。
+    rsa-key-dir: ${AUTH_RSA_KEY_DIR:./data/keys}
+    # 访问令牌 15 分钟 / 刷新令牌 7 天。调短会更频繁地走刷新端点,调长则被盗令牌的可用窗口更长。
+    access-token-expiration: ${AUTH_ACCESS_TOKEN_EXPIRATION:900000}
+    refresh-token-expiration: ${AUTH_REFRESH_TOKEN_EXPIRATION:604800000}
+    # 嵌入会话 JWT 30 分钟。刻意短:过期由 iframe 静默重取,握在第三方页面里的令牌不该长命。
+    embed-token-expiration: ${AUTH_EMBED_TOKEN_EXPIRATION:1800000}
+  oauth:
+    issuer: ${AUTH_OAUTH_ISSUER:http://localhost:8090}
+    mcp-resource-url: ${AUTH_MCP_RESOURCE_URL:http://localhost:8088/api/agent/mcp}
+    scopes: ${AUTH_OAUTH_SCOPES:bi:mcp}
+    access-token-ttl-seconds: ${AUTH_OAUTH_ACCESS_TOKEN_TTL_SECONDS:900}
+    refresh-token-ttl-seconds: ${AUTH_OAUTH_REFRESH_TOKEN_TTL_SECONDS:604800}
+    authorization-code-ttl-seconds: ${AUTH_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS:60}
+    resource-name: ${AUTH_OAUTH_RESOURCE_NAME:知数 BI MCP}
+    resource-documentation: ${AUTH_OAUTH_RESOURCE_DOCUMENTATION:}
+  cors:
+    # ⚠️ 默认 * 是开发口径。生产应收敛成实际的前端来源清单,逗号分隔。
+    allowed-origins: ${AUTH_CORS_ORIGINS:*}
+  cas:
+    # Service Ticket 30 秒 / TGT 8 小时 —— ST 是一次性换票凭据,短到只够跳转一次即可。
+    ticket-ttl: ${AUTH_CAS_TICKET_TTL:30000}
+    tgt-ttl: ${AUTH_CAS_TGT_TTL:28800000}
+    # 本系统对外访问的基地址(协议 + 主机)。CAS 协议要求「登录时提交的 service」与
+    # 「验票时回传的 service」逐字符相等,借用域名 / 反向代理 / IP 直连 / hosts 映射
+    # 都会让两者不等而验票失败,这种场景必须显式配。留空 = 从实际连接推断,不信任转发头。
+    public-base-url: ${AUTH_PUBLIC_BASE_URL:}
+    # 验票出站 SOCKS5 代理 —— 需经跳板访问企业内网 CAS 时配置(host:port)。留空 = 直连。
+    # ⚠️ 凭据是敏感信息:此处只留空默认位,真值在 MSE Nacos 控制台填,不要写进仓库。
+    validate-socks-proxy: ${AUTH_CAS_VALIDATE_SOCKS_PROXY:}
+    validate-socks-username: ${AUTH_CAS_VALIDATE_SOCKS_USER:}
+    validate-socks-password: ${AUTH_CAS_VALIDATE_SOCKS_PASSWORD:}
+
+logging:
+  level:
+    # 镜像内默认是 DEBUG。生产按 INFO 走 —— DEBUG 下认证链路每次请求都会刷出成片日志,
+    # 既压性能也把真正的异常淹掉。排查时在 Nacos 上临时调到 DEBUG,查完调回。
+    com.auth.center: ${LOG_LEVEL_AUTH_CENTER:INFO}

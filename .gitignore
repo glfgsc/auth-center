@@ -9,3 +9,7 @@ target/
 *.ear
 .DS_Store
 Thumbs.db
+# 运行时生成的 RSA 密钥对(auth.jwt.rsa-key-dir=./data/keys)—— 私钥绝不入库
+data/
+node_modules/
+dist/

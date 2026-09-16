@@ -1,0 +1,172 @@
+// 活动审计表与 AI 信任表共用的表格设计词汇 —— 表精修 / 单元格原子 / 软色胶囊 /
+// 状态点 / 展开详情 / 空态。scoped 样式无法跨组件继承,故以 @use 内联到各自作用域,
+// 而不是把这一整套复制两份。
+
+/* a-table 精修:去外框、克制表头、行悬浮、留白 */
+.audit-table {
+  :deep(.ant-table) {
+    background: transparent;
+    font-size: 13px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    background: transparent;
+    color: var(--ds-text-faint);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    border-bottom: 1px solid var(--ds-border);
+    padding: 11px 16px;
+    &::before { display: none !important; }
+  }
+  :deep(.ant-table-tbody > tr > td) {
+    border-bottom: 1px solid var(--ds-divider);
+    padding: 12px 16px;
+    transition: background 0.12s;
+  }
+  :deep(.ant-table-tbody > tr:last-child > td) { border-bottom: none; }
+  :deep(.ant-table-tbody > tr.ant-table-row:hover > td) {
+    background: var(--ds-hover-bg);
+  }
+  :deep(.ant-table-expanded-row > td) { background: var(--ds-bg-soft); }
+  :deep(.ant-table-row-expand-icon) {
+    border-color: var(--ds-border);
+    color: var(--ds-text-muted);
+  }
+}
+
+/* ── 单元格原子 ── */
+.audit-time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ds-text-muted);
+  white-space: nowrap;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ds-text);
+  &--soft { color: var(--ds-text-soft); }
+}
+.audit-dash { color: var(--ds-text-faint); }
+
+.audit-actor {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-text);
+}
+.audit-actor__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-soft-text);
+}
+
+/* ── 软色胶囊(统一各处 tag) ── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  &--xs { height: 18px; padding: 0 6px; font-size: 11px; margin-left: 6px; }
+
+  &--primary { background: var(--ds-primary-soft); color: var(--ds-primary-soft-text); border-color: var(--ds-primary-soft-border); }
+  &--info    { background: var(--ds-info-soft);    color: var(--ds-info-soft-text);    border-color: var(--ds-info-soft-border); }
+  &--success { background: var(--ds-success-soft); color: var(--ds-success-soft-text); border-color: var(--ds-success-soft-border); }
+  &--warning { background: var(--ds-warning-soft); color: var(--ds-warning-soft-text); border-color: var(--ds-warning-soft-border); }
+  &--danger  { background: var(--ds-danger-soft);  color: var(--ds-danger-soft-text);  border-color: var(--ds-danger-soft-border); }
+  &--neutral { background: var(--ds-neutral-soft); color: var(--ds-neutral-soft-text); border-color: var(--ds-neutral-soft-border); }
+}
+
+/* ── 状态点 ── */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  &__dot { width: 6px; height: 6px; border-radius: 50%; }
+  &--ok { color: var(--ds-success); .status__dot { background: var(--ds-success); } }
+  &--err { color: var(--ds-danger); .status__dot { background: var(--ds-danger); } }
+}
+.tox-high { color: var(--ds-danger); font-weight: 600; }
+
+/* ── 展开详情 ── */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 8px 10px;
+}
+.detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+.detail__k {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ds-text-faint);
+  text-transform: uppercase;
+}
+.detail__v { color: var(--ds-text-soft); }
+.detail__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--ds-card-bg);
+  border: 1px solid var(--ds-border-soft);
+  color: var(--ds-text-soft);
+}
+.detail__error {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ds-danger-soft-text);
+}
+.detail__block { display: flex; flex-direction: column; gap: 5px; }
+.detail__pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--ds-card-bg);
+  border: 1px solid var(--ds-border-soft);
+  border-radius: var(--ds-radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ds-text-soft);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow: auto;
+}
+
+/* ── 空态 ── */
+.audit-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 44px 0;
+  color: var(--ds-text-faint);
+  font-size: 13px;
+}
+.audit-empty__icon { font-size: 30px; opacity: 0.5; }

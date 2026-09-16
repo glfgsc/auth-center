@@ -1,0 +1,74 @@
+// 用量看板多个子组件共用的样式片段。scoped 样式无法跨组件继承，故以 @use 内联到各自作用域，
+// 而不是把类名散落成多份复制粘贴。
+
+// ── 表精修(与审计台同构) ──
+.usage-table {
+  :deep(.ant-table) {
+    background: transparent;
+    font-size: 13px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    background: transparent;
+    color: var(--ds-text-faint);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    border-bottom: 1px solid var(--ds-border);
+    padding: 10px 14px;
+    &::before {
+      display: none !important;
+    }
+  }
+  :deep(.ant-table-tbody > tr > td) {
+    border-bottom: 1px solid var(--ds-divider);
+    padding: 10px 14px;
+  }
+  :deep(.ant-table-tbody > tr:last-child > td) {
+    border-bottom: none;
+  }
+  :deep(.ant-table-tbody > tr.ant-table-row:hover > td) {
+    background: var(--ds-hover-bg);
+  }
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ds-text);
+  font-variant-numeric: tabular-nums;
+}
+
+// ── 胶囊(与审计台同构) ──
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  &--xs {
+    height: 18px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+  &--primary {
+    background: var(--ds-primary-soft);
+    color: var(--ds-primary-soft-text);
+    border-color: var(--ds-primary-soft-border);
+  }
+  &--warning {
+    background: var(--ds-warning-soft);
+    color: var(--ds-warning-soft-text);
+    border-color: var(--ds-warning-soft-border);
+  }
+  &--neutral {
+    background: var(--ds-neutral-soft);
+    color: var(--ds-neutral-soft-text);
+    border-color: var(--ds-neutral-soft-border);
+  }
+}

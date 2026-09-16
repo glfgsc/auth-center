@@ -1,18 +1,16 @@
 package com.auth.center.config;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import java.time.LocalDateTime;
 import org.apache.ibatis.reflection.MetaObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 
-import java.time.LocalDateTime;
-
 /**
  * MyBatis-Plus 自动填充配置.
  *
- * <p>统一处理实体中 {@code createTime / createdAt / updateTime / updatedAt} 字段的自动填充，
- * 避免业务代码手动设置时间戳。</p>
+ * 统一处理实体中 {@code createTime / createdAt / updateTime / updatedAt} 字段的自动填充，避免业务代码手动设置时间戳。
  */
 @Configuration
 public class MyBatisPlusConfig implements MetaObjectHandler {
@@ -34,7 +32,7 @@ public class MyBatisPlusConfig implements MetaObjectHandler {
     /**
      * 插入时自动填充.
      *
-     * <p>填充 createTime / createdAt 和 updateTime / updatedAt 为当前时间。</p>
+     * 填充 createTime / createdAt 和 updateTime / updatedAt 为当前时间。
      *
      * @param metaObject 元对象，封装了待插入的实体
      */
@@ -51,7 +49,7 @@ public class MyBatisPlusConfig implements MetaObjectHandler {
     /**
      * 更新时自动填充.
      *
-     * <p>填充 updateTime / updatedAt 为当前时间。</p>
+     * 填充 updateTime / updatedAt 为当前时间。
      *
      * @param metaObject 元对象，封装了待更新的实体
      */

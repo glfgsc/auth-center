@@ -5,17 +5,18 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 /**
  * 权限集实体.
  *
- * <p>对应数据库表 {@code auth_permission_set}，每条记录代表一个权限集合（角色），
- * 如 admin / platform_analyst / self_service_analyst / viewer。</p>
+ * 对应数据库表 {@code auth_permission_set}，每条记录代表一个权限集合（角色），如 admin / platform_analyst /
+ * self_service_analyst / viewer。
  *
- * <p>{@code capabilities} 字段以 JSON 数组形式存储该权限集包含的能力码列表，
- * 例如 {@code ["dashboard:view","dashboard:edit","dataset:create"]}。</p>
+ * {@code capabilities} 字段以 JSON 数组形式存储该权限集包含的能力码列表，例如 {@code
+ * ["dashboard:view","dashboard:edit","dataset:create"]}。
  */
 @TableName("auth_permission_set")
 public class PermissionSet {
@@ -25,9 +26,16 @@ public class PermissionSet {
     private Long id;
 
     /** 权限集编码，唯一（admin / platform_analyst / self_service_analyst / viewer） */
+    @NotBlank(message = "编码不能为空")
+    @Size(max = 50, message = "编码长度不能超过 50")
     private String code;
 
+    /** 归属系统编码：某系统码（如 bi / tracking）或 'global'（跨系统通用，如超管） */
+    private String systemCode;
+
     /** 权限集名称 */
+    @NotBlank(message = "名称不能为空")
+    @Size(max = 100, message = "名称长度不能超过 100")
     private String name;
 
     /** 权限集描述 */
@@ -86,6 +94,24 @@ public class PermissionSet {
      */
     public void setCode(String code) {
         this.code = code;
+    }
+
+    /**
+     * 获取归属系统编码.
+     *
+     * @return 系统编码或 'global'
+     */
+    public String getSystemCode() {
+        return systemCode;
+    }
+
+    /**
+     * 设置归属系统编码.
+     *
+     * @param systemCode 系统编码或 'global'
+     */
+    public void setSystemCode(String systemCode) {
+        this.systemCode = systemCode;
     }
 
     /**

@@ -105,6 +105,9 @@
 
         .error-msg.visible { display: block; }
 
+        /* 强制 SSO 模式下隐藏本地登录表单；回环防御命中时由 JS 移除以放行本地登录 */
+        .hidden { display: none; }
+
         .divider {
             display: flex;
             align-items: center;
@@ -202,6 +205,8 @@
             var ssoMode    = /*[[${ssoMode}]]*/ 'disabled';
             var ssoUrl     = /*[[${ssoServerUrl}]]*/ '';
             var serviceVal = /*[[${service}]]*/ '';
+            var publicBase = /*[[${publicBaseUrl}]]*/ '';
+            var systemVal  = /*[[${system}]]*/ '';
 
             // Enforced mode: auto-redirect unless ?local=1
             if (ssoMode === 'enforced' && ssoUrl) {
@@ -224,10 +229,39 @@
 
             function redirectToSso() {
                 if (!ssoUrl) return;
-                var callbackBase = window.location.origin + '/cas/external-callback';
-                var originalService = serviceVal || window.location.origin;
-                var callbackUrl = callbackBase + '?originalService=' + encodeURIComponent(originalService);
-                window.location.href = ssoUrl + '/login?service=' + encodeURIComponent(callbackUrl);
+                var errorEl = document.getElementById('errorMsg');
+                // 对外基地址：优先用后端注入的 publicBaseUrl（借用域名/代理场景必须），
+                // 缺省回退到浏览器地址栏 origin。它必须与后端验票阶段一致。
+                var origin = publicBase || window.location.origin;
+                var loginEndpoint = ssoUrl.replace(/\/+$/, '') + '/login';
+                // 回环防御 1：上游 CAS 登录端点解析到本认证中心自身的登录页，委派登录
+                // 会原地打转（service 每跳多包一层 URL 编码，最终撑爆请求行返回 400）。
+                if (loginEndpoint === origin + window.location.pathname
+                        || loginEndpoint === window.location.origin + window.location.pathname) {
+                    revealLocalLogin();
+                    showError(errorEl, 'SSO 配置错误：服务器地址指向认证中心自身，无法委派外部登录。请在后台改为独立的上游 CAS 地址。');
+                    return;
+                }
+                // 回环防御 2：传入的 service 已是本中心的 external-callback 回调，说明
+                // 正处于重定向回环中，拒绝继续包裹。
+                if (serviceVal && serviceVal.indexOf('/cas/external-callback') >= 0) {
+                    revealLocalLogin();
+                    showError(errorEl, 'SSO 配置错误：检测到回调地址自引用循环，已中断跳转。');
+                    return;
+                }
+                var callbackUrl = origin + '/cas/external-callback?originalService='
+                        + encodeURIComponent(serviceVal || origin);
+                // 产品编码原样挂上，使验票阶段取回同一档 SSO 配置；
+                // 与 CasServerController.buildUpstreamSsoRedirect 逐字段同构，改一处必改另一处。
+                if (systemVal) {
+                    callbackUrl += '&system=' + encodeURIComponent(systemVal);
+                }
+                window.location.href = loginEndpoint + '?service=' + encodeURIComponent(callbackUrl);
+            }
+
+            function revealLocalLogin() {
+                var form = document.getElementById('loginForm');
+                if (form) form.classList.remove('hidden');
             }
 
             // Login form AJAX submit

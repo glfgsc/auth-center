@@ -7,8 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 /**
  * 用户-权限集关联 Mapper 接口.
  *
- * <p>继承 MyBatis-Plus {@link BaseMapper}，提供 {@link UserPermissionSet} 的基础 CRUD 操作。</p>
+ * 继承 MyBatis-Plus {@link BaseMapper}，提供 {@link UserPermissionSet} 的基础 CRUD 操作。
  */
 @Mapper
-public interface UserPermissionSetMapper extends BaseMapper<UserPermissionSet> {
-}
+public interface UserPermissionSetMapper extends BaseMapper<UserPermissionSet> {}

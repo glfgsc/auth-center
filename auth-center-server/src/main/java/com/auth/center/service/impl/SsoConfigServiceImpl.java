@@ -3,39 +3,44 @@ package com.auth.center.service.impl;
 import com.auth.center.entity.SsoConfig;
 import com.auth.center.mapper.SsoConfigMapper;
 import com.auth.center.service.ISsoConfigService;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
- * SSO 配置服务实现 -- 管理外部 SSO 集成配置的增删改查.
+ * SSO 配置服务实现 -- 管理外部 SSO 集成配置.
  *
- * <p>当前设计为单行记录模式（只保存一条 SSO 配置），
- * 后续可扩展为多 SSO 源配置。</p>
+ * 一个产品一行，唯一键 {@code (system_code, type)}；{@code global} 为兜底档。
  */
 @Service
 public class SsoConfigServiceImpl implements ISsoConfigService {
 
     private static final Logger log = LoggerFactory.getLogger(SsoConfigServiceImpl.class);
 
-    /** 公开配置字段: 模式 */
+    /** 公开配置字段:模式 */
     private static final String FIELD_MODE = "mode";
 
-    /** 公开配置字段: 显示名称 */
+    /** 公开配置字段:显示名称 */
     private static final String FIELD_DISPLAY_NAME = "displayName";
 
-    /** 公开配置字段: 服务器地址 */
+    /** 公开配置字段:服务器地址 */
     private static final String FIELD_SERVER_URL = "serverUrl";
 
-    /** 公开配置字段: 是否启用 */
+    /** 公开配置字段:是否启用 */
     private static final String FIELD_ENABLED = "enabled";
 
-    /** 默认 SSO 模式: 关闭 */
+    /** 默认 SSO 模式:关闭 */
     private static final String DEFAULT_MODE = "disabled";
+
+    /** 表列名:所属产品 */
+    private static final String COL_SYSTEM_CODE = "system_code";
+
+    /** 表列名: SSO 类型 */
+    private static final String COL_TYPE = "type";
 
     private final SsoConfigMapper ssoConfigMapper;
 
@@ -48,28 +53,44 @@ public class SsoConfigServiceImpl implements ISsoConfigService {
         this.ssoConfigMapper = ssoConfigMapper;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public SsoConfig getConfig() {
-        List<SsoConfig> configs = ssoConfigMapper.selectList(null);
-        if (configs.isEmpty()) {
+    public SsoConfig getConfig(String systemCode) {
+        if (systemCode == null || systemCode.isBlank()) {
             return null;
         }
-        return configs.get(0);
+        QueryWrapper<SsoConfig> wrapper = new QueryWrapper<>();
+        wrapper.eq(COL_SYSTEM_CODE, systemCode).orderByAsc(COL_TYPE).last("LIMIT 1");
+        return ssoConfigMapper.selectOne(wrapper);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public SsoConfig resolveConfig(String systemCode) {
+        SsoConfig own = getConfig(systemCode);
+        if (own != null) {
+            return own;
+        }
+        return getConfig(GLOBAL_SYSTEM_CODE);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<SsoConfig> listConfigs() {
+        QueryWrapper<SsoConfig> wrapper = new QueryWrapper<>();
+        wrapper.orderByAsc(COL_SYSTEM_CODE);
+        return ssoConfigMapper.selectList(wrapper);
     }
 
     /**
      * {@inheritDoc}
      *
-     * <p>返回前端 CasPublicConfig 所需的字段:
-     * enabled, mode, name, icon, loginUrl。</p>
+     * 返回前端 CasPublicConfig 所需的字段: enabled, mode, name, icon, loginUrl。
      */
     @Override
-    public Map<String, Object> getPublicConfig() {
+    public Map<String, Object> getPublicConfig(String systemCode) {
         Map<String, Object> result = new HashMap<>();
-        SsoConfig config = getConfig();
+        SsoConfig config = resolveConfig(systemCode);
         if (config == null || !Boolean.TRUE.equals(config.getEnabled())) {
             result.put(FIELD_MODE, DEFAULT_MODE);
             result.put(FIELD_DISPLAY_NAME, "");
@@ -97,32 +118,56 @@ public class SsoConfigServiceImpl implements ISsoConfigService {
         return result;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public SsoConfig updateConfig(SsoConfig config) {
-        SsoConfig existing = getConfig();
+        // 产品编码不给默认值:静默落到 global 会把所有未单独配置的产品一起改掉。
+        if (config.getSystemCode() == null || config.getSystemCode().isBlank()) {
+            throw new IllegalArgumentException("SSO 配置必须指明所属产品(systemCode)");
+        }
+        SsoConfig existing = findBySystemAndType(config.getSystemCode(), config.getType());
         if (existing == null) {
             ssoConfigMapper.insert(config);
-            log.info("SSO 配置已新增: type={}, mode={}", config.getType(), config.getMode());
+            log.info(
+                    "SSO 配置已新增: systemCode={}, type={}, mode={}",
+                    config.getSystemCode(),
+                    config.getType(),
+                    config.getMode());
         } else {
             config.setId(existing.getId());
             ssoConfigMapper.updateById(config);
-            log.info("SSO 配置已更新: type={}, mode={}", config.getType(), config.getMode());
+            log.info(
+                    "SSO 配置已更新: systemCode={}, type={}, mode={}",
+                    config.getSystemCode(),
+                    config.getType(),
+                    config.getMode());
         }
         return config;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void deleteConfig() {
-        SsoConfig existing = getConfig();
+    public void deleteConfig(String systemCode) {
+        SsoConfig existing = getConfig(systemCode);
         if (existing != null) {
             ssoConfigMapper.deleteById(existing.getId());
-            log.info("SSO 配置已删除: id={}", existing.getId());
+            log.info("SSO 配置已删除: systemCode={}, id={}", systemCode, existing.getId());
         }
+    }
+
+    /**
+     * 按 {@code (system_code, type)} 唯一键取行 —— upsert 的判据。
+     *
+     * @param systemCode 产品编码
+     * @param type SSO 类型，为空时退化为「该产品的第一行」
+     * @return 命中的配置行，无则 {@code null}
+     */
+    private SsoConfig findBySystemAndType(String systemCode, String type) {
+        if (type == null || type.isBlank()) {
+            return getConfig(systemCode);
+        }
+        QueryWrapper<SsoConfig> wrapper = new QueryWrapper<>();
+        wrapper.eq(COL_SYSTEM_CODE, systemCode).eq(COL_TYPE, type);
+        return ssoConfigMapper.selectOne(wrapper);
     }
 }

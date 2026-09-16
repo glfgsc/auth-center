@@ -1,0 +1,54 @@
+/*
+ * 认证中心管理控制台 — app 级基础重置。
+ *
+ * 设计 token(全部 --ds-* 变量)+ 暗色桥接(含 ant-design 组件深色覆盖)已统一收敛到
+ * 共享设计系统 @loom/shared-ui/theme/tokens.css(main.ts 全局 import),此处不再重复定义,
+ * 仅保留共享 tokens.css 不含、属本 app 的全局基础:盒模型重置 + html/body 字体与铺满 + #app 占满。
+ */
+
+/* ── 全局重置 ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 13px;
+  color: var(--ds-text);
+  background: var(--ds-bg);
+}
+
+#app {
+  height: 100%;
+}
+
+/* ── 页面容器:全宽内容区(设置页 / 目录页共用) ──
+   与 BI(数织 · 洞察)/ 循迹等接入系统一致:内容铺满、不居中限宽,水平内边距 28px。 */
+.ac-page {
+  padding: 24px 28px 64px;
+}
+
+/* ── 表单字段(SectionCard 内共用) ── */
+.ac-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ac-field__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ds-text-soft);
+  line-height: 1.4;
+}
+.ac-field__hint {
+  font-size: 12px;
+  color: var(--ds-text-faint);
+  line-height: 1.5;
+}

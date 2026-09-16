@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@loom/shared-ui": ["../../libs/shared-ui/src/index.ts"],
+      "@loom/shared-ui/*": ["../../libs/shared-ui/src/*"],
+      // shared-ui 以源码消费,其裸 peer 依赖(vue / vue-i18n / vue-router / icons / axios)只装在本 app 下,
+      // 而 vue-tsc 默认从 libs/shared-ui 处向上找 node_modules 解析不到 → 显式重定向到本 app 的副本,
+      // 与 vite.config 的 resolve.dedupe 对齐(打包期与类型检查期解析口径一致,单实例)。
+      "vue": ["node_modules/vue"],
+      "vue-i18n": ["node_modules/vue-i18n"],
+      "vue-router": ["node_modules/vue-router"],
+      "axios": ["node_modules/axios"],
+      "@ant-design/icons-vue": ["node_modules/@ant-design/icons-vue"],
+      // shared-ui 的 theme/spinIndicator 深引 ant-design-vue/es/spin/Spin(仅拿 setDefaultIndicator,
+      // 不引根入口以免把全量组件打进首屏),同样需要重定向到本 app 副本。
+      "ant-design-vue/*": ["node_modules/ant-design-vue/*"]
+    },
+    "baseUrl": ".",
+    "ignoreDeprecations": "5.0"
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

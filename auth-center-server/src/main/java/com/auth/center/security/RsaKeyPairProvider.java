@@ -1,15 +1,11 @@
 package com.auth.center.security;
 
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -23,15 +19,18 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
- * RSA 密钥对提供器 -- 生成或加载 RSA-2048 密钥对, 用于 JWT 签名与验签.
+ * RSA 密钥对提供器 -- 生成或加载 RSA-2048 密钥对,用于 JWT 签名与验签.
  *
- * <p>启动时检查配置路径下是否存在 PEM 文件:
- * <ul>
- *     <li>若存在 {@code private.pem} 和 {@code public.pem}, 则从文件加载</li>
- *     <li>若不存在, 生成新的 RSA-2048 密钥对并写入 PEM 文件</li>
- * </ul>
+ * 启动时检查配置路径下是否存在 PEM 文件:
+ *
+ *   - 若存在 {@code private.pem} 和 {@code public.pem}, 则从文件加载
+ *   - 若不存在,生成新的 RSA-2048 密钥对并写入 PEM 文件
  */
 @Component
 public class RsaKeyPairProvider {
@@ -47,11 +46,13 @@ public class RsaKeyPairProvider {
     /** 公钥 PEM 文件名 */
     private static final String PUBLIC_KEY_FILE = "public.pem";
 
-    /** PEM 私钥头标记 */
-    private static final String PEM_PRIVATE_BEGIN = "-----BEGIN PRIVATE KEY-----";
+    /** PEM 私钥头标记 (PEM 封装固定分隔符,非私钥本体;密钥运行时从 {@code auth.jwt.rsa-key-dir} 目录加载或启动时动态生成) */
+    private static final String PEM_PRIVATE_BEGIN =
+            "-----BEGIN PRIVATE KEY-----"; // gitleaks:allow -- PEM 分隔符常量, 非硬编码密钥
 
     /** PEM 私钥尾标记 */
-    private static final String PEM_PRIVATE_END = "-----END PRIVATE KEY-----";
+    private static final String PEM_PRIVATE_END =
+            "-----END PRIVATE KEY-----"; // gitleaks:allow -- PEM 分隔符常量, 非硬编码密钥
 
     /** PEM 公钥头标记 */
     private static final String PEM_PUBLIC_BEGIN = "-----BEGIN PUBLIC KEY-----";
@@ -68,7 +69,7 @@ public class RsaKeyPairProvider {
     private KeyPair keyPair;
 
     /**
-     * 启动时初始化密钥对: 优先从文件加载, 不存在则自动生成.
+     * 启动时初始化密钥对:优先从文件加载,不存在则自动生成.
      *
      * @throws RuntimeException 密钥加载或生成失败时抛出
      */
@@ -92,7 +93,7 @@ public class RsaKeyPairProvider {
                 log.info("已生成 RSA-{} 密钥对并保存至 {}", RSA_KEY_SIZE, dir.toAbsolutePath());
             }
         } catch (Exception e) {
-            throw new RuntimeException("RSA 密钥对初始化失败", e);
+            throw new RuntimeException("RSA key pair initialization failed", e);
         }
     }
 
@@ -124,17 +125,12 @@ public class RsaKeyPairProvider {
     }
 
     /**
-     * 返回 JWK 格式的公钥信息, 用于 JWKS 端点.
+     * 返回 JWK 格式的公钥信息,用于 JWKS 端点。含以下标准 JWK 字段:
      *
-     * <p>返回的 Map 包含以下标准 JWK 字段:
-     * <ul>
-     *     <li>{@code kty} - 密钥类型, 固定为 "RSA"</li>
-     *     <li>{@code use} - 用途, 固定为 "sig"</li>
-     *     <li>{@code alg} - 算法, 固定为 "RS256"</li>
-     *     <li>{@code kid} - 密钥 ID (公钥 SHA-256 指纹的 Base64url 编码)</li>
-     *     <li>{@code n} - RSA 模数 (Base64url 编码)</li>
-     *     <li>{@code e} - RSA 指数 (Base64url 编码)</li>
-     * </ul>
+     *   - {@code kty} - 密钥类型,固定为 "RSA";{@code use} - 用途,固定为 "sig"
+     *   - {@code alg} - 算法,固定为 "RS256"
+     *   - {@code kid} - 密钥 ID (公钥 SHA-256 指纹的 Base64url 编码)
+     *   - {@code n} / {@code e} - RSA 模数与指数 (Base64url 编码)
      *
      * @return JWK 格式的公钥描述
      */
@@ -170,27 +166,27 @@ public class RsaKeyPairProvider {
      * 从 PEM 文件加载密钥对.
      *
      * @param privatePath 私钥 PEM 文件路径
-     * @param publicPath  公钥 PEM 文件路径
+     * @param publicPath 公钥 PEM 文件路径
      * @return 加载的密钥对
-     * @throws IOException             文件读取失败时抛出
+     * @throws IOException 文件读取失败时抛出
      * @throws NoSuchAlgorithmException 不支持 RSA 算法时抛出
-     * @throws InvalidKeySpecException  密钥格式无效时抛出
+     * @throws InvalidKeySpecException 密钥格式无效时抛出
      */
     private KeyPair loadKeyPair(Path privatePath, Path publicPath)
             throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 
         // 加载私钥
-        byte[] privateBytes = decodePem(Files.readString(privatePath),
-                PEM_PRIVATE_BEGIN, PEM_PRIVATE_END);
-        RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory
-                .generatePrivate(new PKCS8EncodedKeySpec(privateBytes));
+        byte[] privateBytes =
+                decodePem(Files.readString(privatePath), PEM_PRIVATE_BEGIN, PEM_PRIVATE_END);
+        RSAPrivateKey privateKey =
+                (RSAPrivateKey) keyFactory.generatePrivate(new PKCS8EncodedKeySpec(privateBytes));
 
         // 加载公钥
-        byte[] publicBytes = decodePem(Files.readString(publicPath),
-                PEM_PUBLIC_BEGIN, PEM_PUBLIC_END);
-        RSAPublicKey publicKey = (RSAPublicKey) keyFactory
-                .generatePublic(new X509EncodedKeySpec(publicBytes));
+        byte[] publicBytes =
+                decodePem(Files.readString(publicPath), PEM_PUBLIC_BEGIN, PEM_PUBLIC_END);
+        RSAPublicKey publicKey =
+                (RSAPublicKey) keyFactory.generatePublic(new X509EncodedKeySpec(publicBytes));
 
         return new KeyPair(publicKey, privateKey);
     }
@@ -198,19 +194,20 @@ public class RsaKeyPairProvider {
     /**
      * 将 DER 编码的私钥写入 PEM 文件.
      *
-     * @param path     目标文件路径
+     * @param path 目标文件路径
      * @param derBytes DER 编码的私钥字节
      * @throws IOException 文件写入失败时抛出
      */
     private void savePrivateKey(Path path, byte[] derBytes) throws IOException {
         String pem = encodePem(derBytes, PEM_PRIVATE_BEGIN, PEM_PRIVATE_END);
         Files.writeString(path, pem);
+        restrictFilePermissions(path);
     }
 
     /**
      * 将 DER 编码的公钥写入 PEM 文件.
      *
-     * @param path     目标文件路径
+     * @param path 目标文件路径
      * @param derBytes DER 编码的公钥字节
      * @throws IOException 文件写入失败时抛出
      */
@@ -220,31 +217,48 @@ public class RsaKeyPairProvider {
     }
 
     /**
+     * 将密钥文件权限限制为仅所有者可读写 (POSIX rw-------)。
+     *
+     * Windows 文件系统不支持 POSIX 权限，此时忽略 {@link UnsupportedOperationException}。
+     *
+     * @param path 密钥文件路径
+     */
+    private void restrictFilePermissions(Path path) {
+        try {
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"));
+        } catch (UnsupportedOperationException e) {
+            // Windows — 文件系统无 POSIX 权限支持。生产 (Linux) 不会走到这里;真走到了说明密钥文件
+            // 未被收窄权限,故留痕而非静默吞。
+            log.debug("文件系统不支持 POSIX 权限, 跳过密钥文件权限收窄: {}", path);
+        } catch (IOException e) {
+            log.warn("无法设置密钥文件权限: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 将 DER 字节编码为 PEM 格式字符串.
      *
      * @param derBytes DER 编码字节
-     * @param header   PEM 头标记
-     * @param footer   PEM 尾标记
+     * @param header PEM 头标记
+     * @param footer PEM 尾标记
      * @return PEM 格式字符串
      */
     private String encodePem(byte[] derBytes, String header, String footer) {
-        String base64 = Base64.getMimeEncoder(PEM_LINE_LENGTH, "\n".getBytes()).encodeToString(derBytes);
+        String base64 =
+                Base64.getMimeEncoder(PEM_LINE_LENGTH, "\n".getBytes()).encodeToString(derBytes);
         return header + "\n" + base64 + "\n" + footer + "\n";
     }
 
     /**
      * 从 PEM 字符串解码为 DER 字节.
      *
-     * @param pem    PEM 格式字符串
+     * @param pem PEM 格式字符串
      * @param header PEM 头标记
      * @param footer PEM 尾标记
      * @return DER 编码字节
      */
     private byte[] decodePem(String pem, String header, String footer) {
-        String base64 = pem
-                .replace(header, "")
-                .replace(footer, "")
-                .replaceAll("\\s+", "");
+        String base64 = pem.replace(header, "").replace(footer, "").replaceAll("\\s+", "");
         return Base64.getDecoder().decode(base64);
     }
 

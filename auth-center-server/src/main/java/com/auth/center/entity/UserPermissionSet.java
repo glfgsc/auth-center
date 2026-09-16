@@ -5,14 +5,12 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-
 import java.time.LocalDateTime;
 
 /**
  * 用户-权限集关联实体.
  *
- * <p>对应数据库表 {@code auth_user_permission_set}，记录用户与权限集的绑定关系。
- * 每个用户关联一个权限集。</p>
+ * 对应数据库表 {@code auth_user_permission_set}，记录用户与权限集的绑定关系。每个用户关联一个权限集。
  */
 @TableName("auth_user_permission_set")
 public class UserPermissionSet {
@@ -23,6 +21,9 @@ public class UserPermissionSet {
 
     /** 用户 ID */
     private Long userId;
+
+    /** 绑定所属系统编码（某系统码或 'global'）；一个用户每系统至多一个权限集 */
+    private String systemCode;
 
     /** 权限集 ID */
     private Long permissionSetId;
@@ -67,6 +68,24 @@ public class UserPermissionSet {
      */
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    /**
+     * 获取绑定所属系统编码.
+     *
+     * @return 系统编码或 'global'
+     */
+    public String getSystemCode() {
+        return systemCode;
+    }
+
+    /**
+     * 设置绑定所属系统编码.
+     *
+     * @param systemCode 系统编码或 'global'
+     */
+    public void setSystemCode(String systemCode) {
+        this.systemCode = systemCode;
     }
 
     /**

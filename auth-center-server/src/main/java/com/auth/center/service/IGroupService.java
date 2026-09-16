@@ -2,23 +2,22 @@ package com.auth.center.service;
 
 import com.auth.center.entity.AuthGroup;
 import com.auth.center.entity.AuthGroupMember;
-
 import java.util.List;
 
 /**
  * 用户组服务接口 -- 组的 CRUD 与成员管理.
  *
- * <p>系统预置组（{@code is_system=1}）不可删除。
- * 用户注册时自动加入 {@code all_users} 组。</p>
+ * 系统预置组（{@code is_system=1}）不可删除。用户注册时自动加入 {@code all_users} 组。
  */
 public interface IGroupService {
 
     /**
-     * 列出所有用户组.
+     * 列出用户组，可按产品收窄.
      *
+     * @param systemCode 产品编码；为空则不收窄，返回全部产品的组
      * @return 用户组列表
      */
-    List<AuthGroup> listAll();
+    List<AuthGroup> listAll(String systemCode);
 
     /**
      * 按 ID 查询用户组.
@@ -31,7 +30,7 @@ public interface IGroupService {
     /**
      * 创建用户组.
      *
-     * @param group     组信息（code / name / description）
+     * @param group 组信息（code / name / description）
      * @param creatorId 创建人 ID
      * @return 创建后的组（含 id）
      */
@@ -40,7 +39,7 @@ public interface IGroupService {
     /**
      * 更新用户组信息（name / description）.
      *
-     * @param id    组 ID
+     * @param id 组 ID
      * @param patch 待更新字段
      * @return 更新后的组
      */

@@ -1,19 +1,17 @@
 package com.auth.center.security;
 
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * 登录频率限制器 -- 基于内存的暴力破解防护.
  *
- * <p>跟踪每个用户名的失败登录次数, 达到阈值后锁定该账户一段时间.
- * 登录成功后自动清除记录. 后台定时任务每小时清理过期条目.
+ * 跟踪每个用户名的失败登录次数,达到阈值后锁定该账户一段时间. 登录成功后自动清除记录. 后台定时任务每小时清理过期条目.
  */
 @Component
 public class LoginRateLimiter {
@@ -46,7 +44,7 @@ public class LoginRateLimiter {
             return false;
         }
         long now = System.currentTimeMillis();
-        // 锁定已过期, 清除记录
+        // 锁定已过期,清除记录
         if (record.lockUntil > 0 && record.lockUntil <= now) {
             attempts.remove(username);
             return false;
@@ -57,30 +55,35 @@ public class LoginRateLimiter {
     /**
      * 记录一次登录失败.
      *
-     * <p>若失败次数达到 {@value #MAX_ATTEMPTS} 次, 将锁定该用户名 {@value #LOCK_DURATION_MS} 毫秒.
+     * 若失败次数达到 {@value #MAX_ATTEMPTS} 次,将锁定该用户名 {@value #LOCK_DURATION_MS} 毫秒.
      *
      * @param username 用户名
      */
     public void recordFailure(String username) {
         long now = System.currentTimeMillis();
-        attempts.compute(username, (key, existing) -> {
-            if (existing == null || isWindowExpired(existing, now)) {
-                // 新记录或窗口已过期, 重新开始计数
-                AttemptRecord fresh = new AttemptRecord();
-                fresh.failCount = 1;
-                fresh.lastFailTime = now;
-                fresh.lockUntil = 0;
-                return fresh;
-            }
-            existing.failCount++;
-            existing.lastFailTime = now;
-            if (existing.failCount >= MAX_ATTEMPTS) {
-                existing.lockUntil = now + LOCK_DURATION_MS;
-                log.warn("用户 {} 连续失败 {} 次, 已锁定 {} 分钟",
-                        username, existing.failCount, LOCK_DURATION_MS / 60000);
-            }
-            return existing;
-        });
+        attempts.compute(
+                username,
+                (key, existing) -> {
+                    if (existing == null || isWindowExpired(existing, now)) {
+                        // 新记录或窗口已过期,重新开始计数
+                        AttemptRecord fresh = new AttemptRecord();
+                        fresh.failCount = 1;
+                        fresh.lastFailTime = now;
+                        fresh.lockUntil = 0;
+                        return fresh;
+                    }
+                    existing.failCount++;
+                    existing.lastFailTime = now;
+                    if (existing.failCount >= MAX_ATTEMPTS) {
+                        existing.lockUntil = now + LOCK_DURATION_MS;
+                        log.warn(
+                                "用户 {} 连续失败 {} 次, 已锁定 {} 分钟",
+                                username,
+                                existing.failCount,
+                                LOCK_DURATION_MS / 60000);
+                    }
+                    return existing;
+                });
     }
 
     /**
@@ -96,7 +99,7 @@ public class LoginRateLimiter {
      * 获取指定用户名的剩余锁定秒数.
      *
      * @param username 用户名
-     * @return 剩余锁定秒数, 未锁定时返回 0
+     * @return 剩余锁定秒数,未锁定时返回 0
      */
     public long remainingLockSeconds(String username) {
         AttemptRecord record = attempts.get(username);
@@ -107,9 +110,7 @@ public class LoginRateLimiter {
         return remaining > 0 ? remaining / 1000 : 0;
     }
 
-    /**
-     * 定时清理过期的失败记录, 每小时执行一次.
-     */
+    /** 定时清理过期的失败记录,每小时执行一次. */
     @Scheduled(fixedDelay = CLEANUP_INTERVAL_MS)
     public void cleanup() {
         long now = System.currentTimeMillis();
@@ -118,7 +119,7 @@ public class LoginRateLimiter {
         while (it.hasNext()) {
             Map.Entry<String, AttemptRecord> entry = it.next();
             AttemptRecord record = entry.getValue();
-            // 清理: 锁定已过期 或 失败窗口已过期
+            // 清理:锁定已过期或失败窗口已过期
             boolean lockExpired = record.lockUntil > 0 && record.lockUntil <= now;
             boolean windowExpired = isWindowExpired(record, now);
             if (lockExpired || windowExpired) {
@@ -135,16 +136,14 @@ public class LoginRateLimiter {
      * 判断失败记录的时间窗口是否已过期.
      *
      * @param record 失败记录
-     * @param now    当前时间戳
+     * @param now 当前时间戳
      * @return {@code true} 表示窗口已过期
      */
     private boolean isWindowExpired(AttemptRecord record, long now) {
         return (now - record.lastFailTime) > ATTEMPT_WINDOW_MS;
     }
 
-    /**
-     * 登录尝试记录 -- 存储单个用户名的失败信息.
-     */
+    /** 登录尝试记录 -- 存储单个用户名的失败信息. */
     private static class AttemptRecord {
 
         /** 失败次数 */

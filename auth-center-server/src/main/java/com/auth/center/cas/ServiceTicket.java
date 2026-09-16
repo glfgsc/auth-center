@@ -5,9 +5,8 @@ import java.util.UUID;
 /**
  * CAS ST (Service Ticket) -- 一次性使用的服务票据.
  *
- * <p>在 TGT 有效期内, 用户请求访问某个服务时签发 ST.
- * 服务端通过 ST 向 CAS 服务器验证用户身份, ST 验证后即标记为已使用 (一次性).
- * ST ID 格式为 {@code ST-} 加 UUID, 默认有效期 30 秒.
+ * 在 TGT 有效期内,用户请求访问某个服务时签发 ST. 服务端通过 ST 向 CAS 服务器验证用户身份, ST 验证后即标记为已使用 (一次性). ST ID 格式为 {@code
+ * ST-} 加 UUID, 默认有效期 30 秒.
  */
 public class ServiceTicket {
 
@@ -44,27 +43,28 @@ public class ServiceTicket {
     /** 是否已使用 (一次性票据) */
     private boolean used;
 
-    /**
-     * 无参构造 -- JSON 反序列化框架需要.
-     */
-    public ServiceTicket() {
-    }
+    /** 无参构造 -- JSON 反序列化框架需要. */
+    public ServiceTicket() {}
 
     /**
      * 创建新的 Service Ticket.
      *
-     * @param tgtId         所属 TGT 的 ID
-     * @param serviceUrl    请求服务的回调 URL
-     * @param userId        用户 ID
-     * @param username      用户名
+     * @param tgtId 所属 TGT 的 ID
+     * @param serviceUrl 请求服务的回调 URL
+     * @param userId 用户 ID
+     * @param username 用户名
      * @param permissionSet 权限集名称
-     * @param capabilities  逗号分隔的能力列表
-     * @param ttlMs         有效期 (毫秒)
+     * @param capabilities 逗号分隔的能力列表
+     * @param ttlMs 有效期 (毫秒)
      */
-    public ServiceTicket(String tgtId, String serviceUrl,
-                         Long userId, String username,
-                         String permissionSet, String capabilities,
-                         long ttlMs) {
+    public ServiceTicket(
+            String tgtId,
+            String serviceUrl,
+            Long userId,
+            String username,
+            String permissionSet,
+            String capabilities,
+            long ttlMs) {
         this.id = ST_PREFIX + UUID.randomUUID();
         this.tgtId = tgtId;
         this.serviceUrl = serviceUrl;

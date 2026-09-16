@@ -15,8 +15,7 @@
     <description>Auth Center SDK — JWT validation + auth header filter for downstream services.</description>
 
     <properties>
-        <!-- SDK targets Java 17 for broad consumption -->
-        <java.version>17</java.version>
+        <java.version>21</java.version>
     </properties>
 
     <dependencies>

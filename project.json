@@ -1,0 +1,20 @@
+{
+  "name": "auth-center",
+  "projectType": "application",
+  "sourceRoot": "auth-center",
+  "implicitDependencies": [],
+  "targets": {
+    "build": {
+      "inputs": ["java-common"],
+      "command": "cd auth-center-server && ../mvnw -B -DskipTests package",
+      "options": { "cwd": "auth-center" }
+    },
+    "docker": {
+      "inputs": ["java-common", "{projectRoot}/auth-center-server/Dockerfile"],
+      "command": "docker build -t bi-local/auth-center:$TAG -f auth-center/auth-center-server/Dockerfile auth-center/"
+    },
+    "deploy": {
+      "command": "docker save bi-local/auth-center:$TAG | sudo ctr -n k8s.io images import - && kubectl set image deployment/auth-center auth-center=bi-local/auth-center:$TAG -n bi-prod"
+    }
+  }
+}

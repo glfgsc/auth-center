@@ -4,6 +4,20 @@ server:
 spring:
   application:
     name: auth-center
+  # 运行期配置的值源 —— 与 BI / agent 各服务同一个 Nacos。只取 config 不取 discovery:
+  # 各方按 k8s Service 名直连本服务,不做服务发现。
+  # optional: 前缀让 Nacos 不可达时仍能用本文件的默认值起来 —— 认证中心起不来会连带整个平台登不上,
+  # 不该把它的可用性押在配置中心上。
+  config:
+    import:
+      - "optional:nacos:auth-center.yml"
+  cloud:
+    nacos:
+      config:
+        enabled: ${NACOS_ENABLED:false}
+        server-addr: ${NACOS_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        file-extension: yml
   data:
     redis:
       host: ${REDIS_HOST:}
@@ -12,14 +26,16 @@ spring:
   thymeleaf:
     cache: false
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:auth_center}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:auth_center}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/schema.sql
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: '0'
+    validate-on-migrate: false
 
 mybatis-plus:
   configuration:
@@ -30,8 +46,24 @@ mybatis-plus:
 auth:
   jwt:
     rsa-key-dir: ${AUTH_RSA_KEY_DIR:./data/keys}
-    access-token-expiration: 86400000
+    access-token-expiration: 900000
     refresh-token-expiration: 604800000
+    # 嵌入会话 JWT 有效期（毫秒）— 默认 30 分钟，短时，过期由 iframe 静默重取
+    embed-token-expiration: ${AUTH_EMBED_TOKEN_EXPIRATION:1800000}
+  # OAuth 2.1 Authorization Server 默认值。管理员在 Auth Center 中注册客户端和授权范围；
+  # 这些部署值只用于首次启动/未保存管理配置时的资源边界，不存放客户端密钥。
+  oauth:
+    issuer: ${AUTH_OAUTH_ISSUER:http://localhost:8090}
+    mcp-resource-url: ${AUTH_MCP_RESOURCE_URL:http://localhost:8088/api/agent/mcp}
+    scopes: ${AUTH_OAUTH_SCOPES:bi:mcp}
+    access-token-ttl-seconds: ${AUTH_OAUTH_ACCESS_TOKEN_TTL_SECONDS:900}
+    refresh-token-ttl-seconds: ${AUTH_OAUTH_REFRESH_TOKEN_TTL_SECONDS:604800}
+    authorization-code-ttl-seconds: ${AUTH_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS:60}
+    resource-name: ${AUTH_OAUTH_RESOURCE_NAME:知数 BI MCP}
+    resource-documentation: ${AUTH_OAUTH_RESOURCE_DOCUMENTATION:}
+  # 服务间内部令牌 — 与各 bi 服务 bi.internal-service-token 共享；嵌入会话铸造端点据此
+  # 校验调用方为可信内部服务（网关剥除外部伪造头）。生产必须经 BI_INTERNAL_SERVICE_TOKEN 覆盖。
+  internal-service-token: ${BI_INTERNAL_SERVICE_TOKEN:bi-internal-dev-token-NOT-FOR-PROD-change-in-production}
   cors:
     allowed-origins: ${AUTH_CORS_ORIGINS:*}
   cas:
@@ -39,6 +71,18 @@ auth:
     ticket-ttl: 30000
     # TGT 有效期（毫秒）— 默认 8 小时
     tgt-ttl: 28800000
+    # 本系统对外访问的基地址（协议 + 主机），用于构造回传给上游 CAS 的回调
+    # service，并保证「登录时提交的 service」与「验票时回传的 service」逐字符
+    # 一致（CAS 协议要求两者完全相等，否则 serviceValidate 失败）。
+    # 借用域名 / 反向代理 / IP 直连 / hosts 映射等场景必须显式配置，
+    # 例如 https://skp-internal-dev.bbtv.cn。留空则回退到从实际连接
+    # (request.getServerName + getServerPort) 推断，不信任转发头。
+    public-base-url: ${AUTH_PUBLIC_BASE_URL:}
+    # 验票出站 SOCKS5 代理 —— auth-center 需经跳板访问企业内网 CAS 时配置（host:port）。
+    # 留空 = 直连（默认）。凭据走下面两项，敏感信息通过 env / k8s secret 注入，勿写入仓库。
+    validate-socks-proxy: ${AUTH_CAS_VALIDATE_SOCKS_PROXY:}
+    validate-socks-username: ${AUTH_CAS_VALIDATE_SOCKS_USER:}
+    validate-socks-password: ${AUTH_CAS_VALIDATE_SOCKS_PASSWORD:}
 
 logging:
   level:

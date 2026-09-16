@@ -5,15 +5,13 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-
 import java.time.LocalDateTime;
 
 /**
  * 用户组成员关联实体.
  *
- * <p>对应数据库表 {@code auth_group_member}，记录用户属于哪些组。
- * {@link #username}、{@link #nickname}、{@link #email} 是 JOIN 查询时填充的瞬态字段，
- * 不持久化到数据库。</p>
+ * 对应数据库表 {@code auth_group_member}，记录用户属于哪些组。 {@link #username}、{@link #nickname}、{@link #email}
+ * 是 JOIN 查询时填充的瞬态字段，不持久化到数据库。
  */
 @TableName("auth_group_member")
 public class AuthGroupMember {
