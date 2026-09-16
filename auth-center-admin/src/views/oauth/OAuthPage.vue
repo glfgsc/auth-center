@@ -15,22 +15,27 @@
           </a-form-item>
           <a-row :gutter="16">
             <a-col :span="12">
-          <a-form-item :label="$t('oauth.scopes')" required>
-            <a-select
-              v-model:value="settingsForm.scopes"
-              mode="tags"
-              :token-separators="[',', ' ']"
-              :placeholder="$t('oauth.scopesPlaceholder')"
-              style="width: 100%"
-            />
-            <div class="hint">{{ $t('oauth.scopesHint') }}</div>
-            <a-alert
-              class="scope-explainer"
-              type="info"
-              show-icon
-              :message="$t('oauth.scopeWhat')"
-              :description="$t('oauth.scopeWhatHint')"
-            />
+              <a-form-item required>
+                <template #label>
+                  <span class="form-label-with-help">
+                    {{ $t('oauth.scopes') }}
+                    <a-popover placement="rightTop" trigger="click">
+                      <template #title>{{ $t('oauth.scopeWhat') }}</template>
+                      <template #content>
+                        <div class="oauth-help-popover">{{ $t('oauth.scopeWhatHint') }}</div>
+                      </template>
+                      <InfoCircleOutlined class="form-label-help" :aria-label="$t('oauth.scopeWhat')" />
+                    </a-popover>
+                  </span>
+                </template>
+                <a-select
+                  v-model:value="settingsForm.scopes"
+                  mode="tags"
+                  :token-separators="[',', ' ']"
+                  :placeholder="$t('oauth.scopesPlaceholder')"
+                  style="width: 100%"
+                />
+                <div class="hint">{{ $t('oauth.scopesHintShort') }}</div>
               </a-form-item>
             </a-col>
             <a-col :span="12">
@@ -75,9 +80,25 @@
       <a-form layout="vertical">
         <a-form-item :label="$t('oauth.clientName')" required><a-input v-model:value="clientForm.clientName" /></a-form-item>
         <a-form-item :label="$t('oauth.clientType')" required><a-select v-model:value="clientForm.clientType" :options="clientTypeOptions" /></a-form-item>
-        <a-form-item :label="$t('oauth.redirectUris')" required>
-          <a-textarea v-model:value="clientForm.redirectUrisText" :rows="4" />
-          <div class="hint">{{ $t('oauth.redirectUrisHint') }}</div>
+        <a-form-item required>
+          <template #label>
+            <span class="form-label-with-help">
+              {{ $t('oauth.redirectUris') }}
+              <a-popover placement="rightTop" trigger="click">
+                <template #title>{{ $t('oauth.redirectUris') }}</template>
+                <template #content>
+                  <div class="oauth-help-popover">{{ $t('oauth.redirectUrisHelp') }}</div>
+                </template>
+                <InfoCircleOutlined class="form-label-help" :aria-label="$t('oauth.redirectUris')" />
+              </a-popover>
+            </span>
+          </template>
+          <a-textarea
+            v-model:value="clientForm.redirectUrisText"
+            :rows="4"
+            :placeholder="$t('oauth.redirectUrisPlaceholder')"
+          />
+          <div class="hint">{{ $t('oauth.redirectUrisShort') }}</div>
         </a-form-item>
         <a-form-item :label="$t('oauth.clientScopes')" required><a-select v-model:value="clientForm.scopes" mode="multiple" :options="settingsForm.scopes.map((scope) => ({ value: scope, label: scope }))" /></a-form-item>
         <a-form-item :label="$t('oauth.clientTtl')"><a-input-number v-model:value="clientForm.tokenTtlSeconds" :min="60" :max="settingsForm.accessTokenTtlSeconds" style="width: 100%" /></a-form-item>
@@ -94,7 +115,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { ApiOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { ApiOutlined, InfoCircleOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
@@ -167,7 +188,10 @@ onMounted(load)
 .oauth-page { max-width: 1100px; }
 .oauth-card { margin-bottom: 16px; }
 .hint { color: var(--ds-text-faint); font-size: 12px; line-height: 1.5; margin-top: 4px; }
-.scope-explainer { margin-top: 12px; }
+.form-label-with-help { display: inline-flex; align-items: center; gap: 5px; }
+.form-label-help { color: var(--ds-text-faint); cursor: pointer; transition: color 0.15s; }
+.form-label-help:hover { color: var(--ds-primary); }
+.oauth-help-popover { max-width: 320px; line-height: 1.6; }
 .client-row { display: flex; align-items: flex-start; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--ds-border); }
 .client-row:last-child { border-bottom: 0; }
 .client-main { min-width: 0; flex: 1; }
