@@ -15,9 +15,15 @@
           </a-form-item>
           <a-row :gutter="16">
             <a-col :span="12">
-              <a-form-item :label="$t('oauth.scopes')" required>
-                <a-textarea v-model:value="scopeText" :rows="3" />
-                <div class="hint">{{ $t('oauth.scopesHint') }}</div>
+          <a-form-item :label="$t('oauth.scopes')" required>
+            <a-select
+              v-model:value="settingsForm.scopes"
+              mode="tags"
+              :token-separators="[',', ' ']"
+              :placeholder="$t('oauth.scopesPlaceholder')"
+              style="width: 100%"
+            />
+            <div class="hint">{{ $t('oauth.scopesHint') }}</div>
               </a-form-item>
             </a-col>
             <a-col :span="12">
@@ -44,8 +50,12 @@
         <div v-for="client in clients" :key="client.id" class="client-row">
           <div class="client-main">
             <div class="client-title">{{ client.clientName }} <a-tag>{{ client.clientType }}</a-tag></div>
-            <div class="client-id">{{ client.clientId }}</div>
-            <div class="client-meta">{{ client.redirectUris.join(' · ') }} · {{ client.scopes.join(' ') }} · aud={{ client.resourceAudience }}</div>
+            <div class="client-id">{{ $t('oauth.clientId') }}: {{ client.clientId }}</div>
+            <div class="client-meta">
+              {{ $t('oauth.redirectUris') }}: {{ client.redirectUris.join(' · ') }} ·
+              {{ $t('oauth.scopes') }}: {{ client.scopes.join(' ') }} ·
+              {{ $t('oauth.audienceShort') }}={{ client.resourceAudience }}
+            </div>
           </div>
           <a-popconfirm :title="$t('oauth.deleteConfirm')" @confirm="removeClient(client.id)">
             <a-button danger type="text">{{ $t('common.delete') }}</a-button>
@@ -78,6 +88,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { ApiOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
 import { oauthApi, type OAuthClientItem, type OAuthSettings } from '@/api'
@@ -89,20 +100,17 @@ const clients = ref<OAuthClientItem[]>([])
 const clientModalOpen = ref(false)
 const secretModalOpen = ref(false)
 const createdSecret = ref('')
+const { t } = useI18n()
 
 const settingsForm = reactive<OAuthSettings>({
   issuer: '', mcpResourceUrl: '', scopes: [], accessTokenTtlSeconds: 900,
   refreshTokenTtlSeconds: 604800, authorizationCodeTtlSeconds: 60,
   resourceName: '', resourceDocumentation: '',
 })
-const scopeText = computed({
-  get: () => settingsForm.scopes.join('\n'),
-  set: (value: string) => { settingsForm.scopes = value.split(/\s+/).map((item) => item.trim()).filter(Boolean) },
-})
 const clientForm = reactive({ clientName: '', clientType: 'public' as 'public' | 'confidential', redirectUrisText: '', scopes: [] as string[], tokenTtlSeconds: 900 })
 const clientTypeOptions = computed(() => [
-  { value: 'public', label: 'Public（PKCE）' },
-  { value: 'confidential', label: 'Confidential（密钥）' },
+  { value: 'public', label: t('oauth.publicClient') },
+  { value: 'confidential', label: t('oauth.confidentialClient') },
 ])
 
 async function load(): Promise<void> {
@@ -113,21 +121,21 @@ async function load(): Promise<void> {
     clients.value = registered.data ?? []
     clientForm.tokenTtlSeconds = settingsForm.accessTokenTtlSeconds
   } catch {
-    message.error('OAuth configuration load failed')
+    message.error(t('oauth.loadFail'))
   } finally { loading.value = false }
 }
 
 async function saveSettings(): Promise<void> {
-  if (!settingsForm.issuer.trim() || !settingsForm.mcpResourceUrl.trim() || !settingsForm.scopes.length) { message.warning('OAuth settings are incomplete'); return }
+  if (!settingsForm.issuer.trim() || !settingsForm.mcpResourceUrl.trim() || !settingsForm.scopes.length) { message.warning(t('oauth.required')); return }
   saving.value = true
-  try { Object.assign(settingsForm, (await oauthApi.saveSettings({ ...settingsForm })).data); message.success('OAuth configuration saved') }
-  catch { message.error('OAuth configuration save failed') }
+  try { Object.assign(settingsForm, (await oauthApi.saveSettings({ ...settingsForm })).data); message.success(t('oauth.saved')) }
+  catch { message.error(t('oauth.saveFail')) }
   finally { saving.value = false }
 }
 
 async function createClient(): Promise<void> {
   const redirectUris = clientForm.redirectUrisText.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
-  if (!clientForm.clientName.trim() || !redirectUris.length || !clientForm.scopes.length) { message.warning('OAuth client registration is incomplete'); return }
+  if (!clientForm.clientName.trim() || !redirectUris.length || !clientForm.scopes.length) { message.warning(t('oauth.required')); return }
   creating.value = true
   try {
     const result = (await oauthApi.createClient({ clientName: clientForm.clientName.trim(), clientType: clientForm.clientType, redirectUris, scopes: clientForm.scopes, resourceAudience: settingsForm.mcpResourceUrl, tokenTtlSeconds: clientForm.tokenTtlSeconds })).data
@@ -135,14 +143,14 @@ async function createClient(): Promise<void> {
     clientModalOpen.value = false
     clientForm.clientName = ''; clientForm.redirectUrisText = ''; clientForm.scopes = []
     if (result.clientSecret) { createdSecret.value = result.clientSecret; secretModalOpen.value = true }
-    message.success('OAuth client created')
-  } catch { message.error('OAuth client creation failed') }
+    message.success(t('oauth.created'))
+  } catch { message.error(t('oauth.saveFail')) }
   finally { creating.value = false }
 }
 
 async function removeClient(id: number): Promise<void> {
-  try { await oauthApi.deleteClient(id); clients.value = clients.value.filter((client) => client.id !== id); message.success('OAuth client deleted') }
-  catch { message.error('OAuth client deletion failed') }
+  try { await oauthApi.deleteClient(id); clients.value = clients.value.filter((client) => client.id !== id); message.success(t('oauth.deleted')) }
+  catch { message.error(t('oauth.saveFail')) }
 }
 
 onMounted(load)
