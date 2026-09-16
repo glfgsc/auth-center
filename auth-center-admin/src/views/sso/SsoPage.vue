@@ -6,8 +6,34 @@
 -->
 <template>
   <div class="ac-page sso-page">
-    <a-tabs class="sso-tabs" default-active-key="cas">
-      <a-tab-pane key="cas" :tab="$t('sso.casTab')">
+    <nav class="sso-tabs" role="tablist" :aria-label="$t('nav.sso')">
+      <button
+        class="sso-tab"
+        :class="{ 'sso-tab--active': activeTab === 'cas' }"
+        type="button"
+        id="sso-tab-cas"
+        role="tab"
+        :aria-selected="activeTab === 'cas'"
+        aria-controls="sso-panel-cas"
+        @click="activeTab = 'cas'"
+      >
+        {{ $t('sso.casTab') }}
+      </button>
+      <button
+        class="sso-tab"
+        :class="{ 'sso-tab--active': activeTab === 'oauth' }"
+        type="button"
+        id="sso-tab-oauth"
+        role="tab"
+        :aria-selected="activeTab === 'oauth'"
+        aria-controls="sso-panel-oauth"
+        @click="activeTab = 'oauth'"
+      >
+        {{ $t('sso.oauthTab') }}
+      </button>
+    </nav>
+
+    <section v-if="activeTab === 'cas'" id="sso-panel-cas" role="tabpanel" aria-labelledby="sso-tab-cas">
         <a-spin :spinning="spinning">
       <!-- 空态:未配置 SSO -->
       <div v-if="!form.exists && !loading" class="sso-empty">
@@ -60,17 +86,16 @@
           </aside>
         </div>
       </template>
-        </a-spin>
-      </a-tab-pane>
-      <a-tab-pane key="oauth" :tab="$t('sso.oauthTab')">
-        <OAuthPage />
-      </a-tab-pane>
-    </a-tabs>
+      </a-spin>
+    </section>
+    <section v-else id="sso-panel-oauth" role="tabpanel" aria-labelledby="sso-tab-oauth">
+      <OAuthPage />
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, provide } from 'vue'
+import { computed, onMounted, provide, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusOutlined, SafetyOutlined } from '@ant-design/icons-vue'
 
@@ -84,6 +109,7 @@ import SsoStatusAside from './components/SsoStatusAside.vue'
 import OAuthPage from '@/views/oauth/OAuthPage.vue'
 
 const { t } = useI18n()
+const activeTab = ref<'cas' | 'oauth'>('cas')
 
 const {
   form, loading, spinning, saving, testing, testResult, callbackPattern, dirty,
@@ -120,6 +146,39 @@ onMounted(load)
 
   @media (max-width: 1080px) {
     grid-template-columns: 1fr;
+  }
+}
+
+/* 与用户目录 / 审计页共用同一套下划线 Tab 语言。 */
+.sso-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.sso-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 14px;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ds-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: var(--ds-text);
+  }
+
+  &--active {
+    border-bottom-color: var(--ds-primary);
+    color: var(--ds-primary);
+    font-weight: 600;
   }
 }
 

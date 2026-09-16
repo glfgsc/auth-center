@@ -1,9 +1,9 @@
 <template>
-  <div class="ac-page oauth-page">
+  <div class="oauth-page">
     <PageHeader :title="$t('oauth.title')" :description="$t('oauth.subtitle')" />
 
     <a-spin :spinning="loading">
-      <a-card :title="$t('oauth.settings')" class="oauth-card">
+      <SectionCard :title="$t('oauth.settings')" :icon="SettingOutlined" class="oauth-card">
         <a-form layout="vertical" :model="settingsForm">
           <a-form-item :label="$t('oauth.issuer')" required>
             <a-input v-model:value="settingsForm.issuer" />
@@ -36,9 +36,9 @@
           </a-row>
           <a-button type="primary" :loading="saving" @click="saveSettings">{{ $t('common.save') }}</a-button>
         </a-form>
-      </a-card>
+      </SectionCard>
 
-      <a-card :title="$t('oauth.clients')" class="oauth-card">
+      <SectionCard :title="$t('oauth.clients')" :icon="ApiOutlined" class="oauth-card">
         <template #extra><a-button type="primary" @click="clientModalOpen = true">{{ $t('oauth.addClient') }}</a-button></template>
         <a-empty v-if="!clients.length" />
         <div v-for="client in clients" :key="client.id" class="client-row">
@@ -51,7 +51,7 @@
             <a-button danger type="text">{{ $t('common.delete') }}</a-button>
           </a-popconfirm>
         </div>
-      </a-card>
+      </SectionCard>
     </a-spin>
 
     <a-modal v-model:open="clientModalOpen" :title="$t('oauth.addClient')" :confirm-loading="creating" @ok="createClient">
@@ -77,7 +77,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { ApiOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import SectionCard from '@/components/common/SectionCard.vue'
 import { oauthApi, type OAuthClientItem, type OAuthSettings } from '@/api'
 
 const loading = ref(false)
